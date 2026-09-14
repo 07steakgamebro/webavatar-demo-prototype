@@ -288,14 +288,14 @@ export const ThailandFlightMap: React.FC<ThailandFlightMapProps> = ({
       </svg>
 
       {/* Bottom Right: Route Summary Badge */}
-      <div className="absolute bottom-2.5 right-2.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2.5 py-1 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs text-[10px] flex items-center gap-1.5 z-10 select-none">
-        <span className="font-mono font-bold text-slate-900 dark:text-white">{originCode}</span>
-        <span className="text-slate-400">➔</span>
-        <span className="font-mono font-bold text-amber-500 dark:text-amber-400">{destCode}</span>
+      <div className="absolute bottom-2.5 right-2.5 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md px-2.5 py-1 rounded-xl border border-slate-200/80 dark:border-slate-800 shadow-2xs text-[10px] flex items-center gap-1.5 z-10 select-none max-w-[calc(100%-1.25rem)] overflow-hidden">
+        <span className="font-mono font-bold text-slate-900 dark:text-white shrink-0">{originCode}</span>
+        <span className="text-slate-400 shrink-0">➔</span>
+        <span className="font-mono font-bold text-amber-500 dark:text-amber-400 shrink-0">{destCode}</span>
         {distanceKm > 0 && (
           <>
-            <span className="text-slate-300 dark:text-slate-700">|</span>
-            <span className="font-medium text-slate-500 dark:text-slate-400 font-mono">{distanceKm} km</span>
+            <span className="text-slate-300 dark:text-slate-700 shrink-0">|</span>
+            <span className="font-medium text-slate-500 dark:text-slate-400 font-mono truncate">{distanceKm} km</span>
           </>
         )}
       </div>

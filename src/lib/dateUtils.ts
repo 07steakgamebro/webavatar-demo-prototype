@@ -91,3 +91,45 @@ export function formatTime(
     return d.toLocaleTimeString('en-US', options);
   }
 }
+
+export function formatFlightDuration(dur: string = '', lang: string = 'en'): string {
+  if (!dur) return '';
+  let hours = 0;
+  let mins = 0;
+
+  const thaiMatch = dur.match(/(\d+)\s*ชม\.?\s*(?:(\d+)\s*นาที)?/);
+  const engMatch = dur.match(/(\d+)\s*h(?:ours?)?\s*(?:(\d+)\s*m(?:ins?)?)?/i);
+
+  if (thaiMatch) {
+    hours = parseInt(thaiMatch[1], 10);
+    mins = thaiMatch[2] ? parseInt(thaiMatch[2], 10) : 0;
+  } else if (engMatch) {
+    hours = parseInt(engMatch[1], 10);
+    mins = engMatch[2] ? parseInt(engMatch[2], 10) : 0;
+  } else {
+    const nums = dur.match(/\d+/g);
+    if (nums) {
+      hours = parseInt(nums[0], 10);
+      mins = nums[1] ? parseInt(nums[1], 10) : 0;
+    } else {
+      return dur;
+    }
+  }
+
+  if (lang === 'th') {
+    return mins > 0 ? `${hours} ชม. ${mins} นาที` : `${hours} ชม.`;
+  }
+  if (lang === 'zh') {
+    return mins > 0 ? `${hours}小时 ${mins}分` : `${hours}小时`;
+  }
+  if (lang === 'ja') {
+    return mins > 0 ? `${hours}時間 ${mins}分` : `${hours}時間`;
+  }
+  if (lang === 'ko') {
+    return mins > 0 ? `${hours}시간 ${mins}분` : `${hours}시간`;
+  }
+  if (lang === 'es' || lang === 'fr') {
+    return mins > 0 ? `${hours} h ${mins} min` : `${hours} h`;
+  }
+  return mins > 0 ? `${hours}h ${mins}m` : `${hours}h`;
+}
