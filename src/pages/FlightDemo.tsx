@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from "react";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence, useScroll, useTransform, useInView } from "framer-motion";
 import { useTranslation } from "@/lib/LanguageContext";
-import { formatDate, getLocaleTag } from "@/lib/dateUtils";
+import { formatDate, getLocaleTag, formatFlightDuration } from "@/lib/dateUtils";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   Plane, ChevronDown, Check,
@@ -374,8 +374,15 @@ export default function FlightDemo() {
     const fromCode = getAirportCode(fromCity);
     const toCode = getAirportCode(toCity);
 
+    if (!isRouteAvailable(fromCity, toCity)) {
+      return [];
+    }
+
     // Look for matching aircraft in MOCK_FLEET
     const matchedFleet = MOCK_FLEET.filter((p) => p.originCode === fromCode && p.destCode === toCode);
+    if (matchedFleet.length === 0) {
+      return [];
+    }
     const baseAircraft = matchedFleet[0];
 
     const basePrice = baseAircraft?.price || (toCity.includes("ภูเก็ต") || toCity.includes("หาดใหญ่") ? 990 : 890);
@@ -564,9 +571,10 @@ export default function FlightDemo() {
     if (tripType === "multicity") {
       return multiCityLegs.map((leg, idx) => {
         const flight = selectedMultiCityFlights[idx];
-        const routeAircraft = MOCK_FLEET.find(
+        const routeFleet = MOCK_FLEET.filter(
           (p) => p.originCode === getAirportCode(leg.from) && p.destCode === getAirportCode(leg.to)
         );
+        const routeAircraft = routeFleet.length > 0 ? (routeFleet[idx % routeFleet.length] || routeFleet[0]) : undefined;
         return {
           legIndex: idx,
           label: language === "th" ? `เที่ยวบินที่ ${idx + 1}` : `Flight ${idx + 1}`,
@@ -585,12 +593,14 @@ export default function FlightDemo() {
         };
       });
     } else if (tripType === "round") {
-      const outAircraft = MOCK_FLEET.find(
+      const outFleet = MOCK_FLEET.filter(
         (p) => p.originCode === getAirportCode(form.from) && p.destCode === getAirportCode(form.to)
       );
-      const inAircraft = MOCK_FLEET.find(
+      const inFleet = MOCK_FLEET.filter(
         (p) => p.originCode === getAirportCode(form.to) && p.destCode === getAirportCode(form.from)
       );
+      const outAircraft = outFleet[0];
+      const inAircraft = inFleet.length > 1 ? inFleet[1] : (inFleet[0] || undefined);
       return [
         {
           legIndex: 0,
@@ -615,7 +625,7 @@ export default function FlightDemo() {
           to: form.from,
           departDate: form.returnDate,
           flightNo: selectedInboundFlight?.flightNo || inAircraft?.flightNo || "BTN202",
-          aircraftModel: selectedInboundFlight?.aircraft?.model || inAircraft?.model || "Airbus A320-200",
+          aircraftModel: selectedInboundFlight?.aircraft?.model || inAircraft?.model || "Airbus A350-900",
           aircraftTail: selectedInboundFlight?.aircraft?.tailNumber || inAircraft?.tailNumber || "HS-BNB",
           cabinClass: selectedInboundFlight?.class || (selectedClass !== "all" ? selectedClass : "economy"),
           departTime: selectedInboundFlight?.departTime || inAircraft?.depTime || "17:00",
@@ -626,9 +636,10 @@ export default function FlightDemo() {
         },
       ];
     } else {
-      const routeAircraft = MOCK_FLEET.find(
+      const routeFleet = MOCK_FLEET.filter(
         (p) => p.originCode === getAirportCode(form.from) && p.destCode === getAirportCode(form.to)
       );
+      const routeAircraft = routeFleet[0];
       return [
         {
           legIndex: 0,
@@ -689,6 +700,72 @@ export default function FlightDemo() {
     }
   };
 
+  // Synchronize and trim selected seats whenever passenger count (form.passengers) changes
+  useEffect(() => {
+    if (!form.passengers || form.passengers < 1) return;
+
+    setLegSeats((prev) => {
+      let updated = false;
+      const nextLegSeats: Record<number, string> = {};
+
+      Object.keys(prev).forEach((keyStr) => {
+        const key = Number(keyStr);
+        const seatStr = prev[key] || "";
+        if (!seatStr) {
+          nextLegSeats[key] = "";
+          return;
+        }
+        const seats = seatStr.split(",").map((s) => s.trim()).filter(Boolean);
+        if (seats.length > form.passengers) {
+          updated = true;
+          nextLegSeats[key] = seats.slice(0, form.passengers).join(", ");
+        } else {
+          nextLegSeats[key] = seatStr;
+        }
+      });
+
+      if (updated) {
+        if (allFlightLegs.length === 1) {
+          setForm((f) => ({ ...f, seat: nextLegSeats[0] || "" }));
+        } else if (tripType === "round") {
+          const outS = nextLegSeats[0] || "";
+          const inS = nextLegSeats[1] || "";
+          const formatted = [
+            outS ? `${language === 'th' ? 'ขาไป' : 'Outbound'}: ${outS}` : "",
+            inS ? `${language === 'th' ? 'ขากลับ' : 'Return'}: ${inS}` : "",
+          ].filter(Boolean).join(" | ");
+          setForm((f) => ({ ...f, seat: formatted || outS }));
+        } else {
+          const formatted = allFlightLegs
+            .map((l, i) => {
+              const s = nextLegSeats[i];
+              if (!s) return "";
+              const fromCode = getAirportCode(l.from);
+              const toCode = getAirportCode(l.to);
+              return `${fromCode}→${toCode}: ${s}`;
+            })
+            .filter(Boolean)
+            .join(" | ");
+          setForm((f) => ({ ...f, seat: formatted || Object.values(nextLegSeats).filter(Boolean).join(", ") }));
+        }
+        return nextLegSeats;
+      }
+      return prev;
+    });
+
+    setForm((prevForm) => {
+      if (!prevForm.seat || prevForm.seat.includes(":")) return prevForm;
+      const seats = prevForm.seat.split(",").map((s) => s.trim()).filter(Boolean);
+      if (seats.length > prevForm.passengers) {
+        return {
+          ...prevForm,
+          seat: seats.slice(0, prevForm.passengers).join(", "),
+        };
+      }
+      return prevForm;
+    });
+  }, [form.passengers, allFlightLegs, tripType, language]);
+
   const handleSearchSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.passengers || form.passengers < 1) {
@@ -696,9 +773,9 @@ export default function FlightDemo() {
       setForm((prev) => ({ ...prev, passengers: 1 }));
       return;
     }
-    if (form.passengers > 60) {
-      toast.error(t('flight.err_max_passengers') || 'จำนวนผู้โดยสารสูงสุดไม่เกิน 60 ท่าน');
-      setForm((prev) => ({ ...prev, passengers: 60 }));
+    if (form.passengers > 10) {
+      toast.error(t('flight.err_max_passengers') || 'จำนวนผู้โดยสารสูงสุดไม่เกิน 10 ท่าน');
+      setForm((prev) => ({ ...prev, passengers: 10 }));
       return;
     }
 
@@ -772,9 +849,9 @@ export default function FlightDemo() {
       setForm((prev) => ({ ...prev, passengers: 1 }));
       return;
     }
-    if (form.passengers > 60) {
-      toast.error(t('flight.err_max_passengers') || 'จำนวนผู้โดยสารสูงสุดไม่เกิน 60 ท่าน');
-      setForm((prev) => ({ ...prev, passengers: 60 }));
+    if (form.passengers > 10) {
+      toast.error(t('flight.err_max_passengers') || 'จำนวนผู้โดยสารสูงสุดไม่เกิน 10 ท่าน');
+      setForm((prev) => ({ ...prev, passengers: 10 }));
       return;
     }
 
@@ -899,6 +976,12 @@ export default function FlightDemo() {
     let pricePerPax = 0;
     let newBooking: any = null;
 
+    const sanitizeSeats = (seatStr: string = "") => {
+      if (!seatStr) return "";
+      const seats = seatStr.split(",").map((s) => s.trim()).filter(Boolean);
+      return seats.slice(0, form.passengers).join(", ");
+    };
+
     if (tripType === "multicity") {
       pricePerPax = selectedMultiCityFlights.reduce((sum, f) => sum + (f?.price || 890), 0);
       const legs = allFlightLegs.map((leg, idx) => ({
@@ -911,7 +994,7 @@ export default function FlightDemo() {
         airlineName: leg.airlineName || "Botnoi Air",
         airlineCode: leg.airlineCode || "BTN",
         price: leg.price || 890,
-        seat: legSeats[idx] || (idx === 0 ? form.seat : ""),
+        seat: sanitizeSeats(legSeats[idx] || (idx === 0 ? form.seat : "")),
         aircraftModel: leg.aircraftModel,
         aircraftTail: leg.aircraftTail,
         class: leg.cabinClass,
@@ -924,7 +1007,7 @@ export default function FlightDemo() {
         to: multiCityLegs[multiCityLegs.length - 1].to,
         departDate: multiCityLegs[0].date,
         legs,
-        seat: Object.values(legSeats).filter(Boolean).join(" | ") || form.seat,
+        seat: Object.values(legSeats).map(s => sanitizeSeats(s)).filter(Boolean).join(" | ") || sanitizeSeats(form.seat),
         pricePerPax,
         class: selectedClass !== "all" ? selectedClass : (selectedMultiCityFlights[0]?.class || "economy"),
         aircraftModel: selectedMultiCityFlights[0]?.aircraft?.model || "Airbus A320-200",
@@ -944,7 +1027,7 @@ export default function FlightDemo() {
         airlineName: leg.airlineName || "Botnoi Air",
         airlineCode: leg.airlineCode || "BTN",
         price: leg.price || 890,
-        seat: legSeats[idx] || (idx === 0 ? form.seat : ""),
+        seat: sanitizeSeats(legSeats[idx] || (idx === 0 ? form.seat : "")),
         aircraftModel: leg.aircraftModel,
         aircraftTail: leg.aircraftTail,
         class: leg.cabinClass,
@@ -953,8 +1036,8 @@ export default function FlightDemo() {
       newBooking = {
         tripType: "round",
         ...form,
-        seat: legSeats[0] || form.seat,
-        returnSeat: legSeats[1] || "",
+        seat: sanitizeSeats(legSeats[0] || form.seat),
+        returnSeat: sanitizeSeats(legSeats[1] || ""),
         legs,
         pricePerPax,
         class: selectedOutboundFlight?.class || "economy",
@@ -979,7 +1062,7 @@ export default function FlightDemo() {
         airlineName: leg.airlineName || "Botnoi Air",
         airlineCode: leg.airlineCode || "BTN",
         price: leg.price || 890,
-        seat: legSeats[0] || form.seat,
+        seat: sanitizeSeats(legSeats[0] || form.seat),
         aircraftModel: leg.aircraftModel,
         aircraftTail: leg.aircraftTail,
         class: leg.cabinClass,
@@ -988,7 +1071,7 @@ export default function FlightDemo() {
       newBooking = {
         tripType: "oneway",
         ...form,
-        seat: legSeats[0] || form.seat,
+        seat: sanitizeSeats(legSeats[0] || form.seat),
         legs,
         pricePerPax,
         class: selectedOutboundFlight?.class || "economy",
@@ -1411,21 +1494,21 @@ export default function FlightDemo() {
                                 <input
                                   type="number"
                                   min={1}
-                                  max={60}
+                                  max={10}
                                   value={form.passengers}
                                   onChange={(e) => {
                                     const val = parseInt(e.target.value, 10);
                                     if (isNaN(val)) {
                                       setForm(prev => ({ ...prev, passengers: 1 }));
                                     } else {
-                                      setForm(prev => ({ ...prev, passengers: Math.max(1, Math.min(60, val)) }));
+                                      setForm(prev => ({ ...prev, passengers: Math.max(1, Math.min(10, val)) }));
                                     }
                                   }}
                                   className="w-12 py-1 text-center font-bold text-sm bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white outline-none focus:border-blue-500"
                                 />
                                 <button
                                   type="button"
-                                  onClick={() => setForm(prev => ({ ...prev, passengers: Math.min(60, prev.passengers + 1) }))}
+                                  onClick={() => setForm(prev => ({ ...prev, passengers: Math.min(10, prev.passengers + 1) }))}
                                   className="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold flex items-center justify-center hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95 cursor-pointer transition-all text-sm select-none"
                                 >
                                   +
@@ -1435,7 +1518,7 @@ export default function FlightDemo() {
                             <div className="pt-2.5 border-t border-slate-100 dark:border-slate-800">
                               <span className="text-[10px] text-slate-400 block mb-2 font-medium">{t('flight.quick_select')}</span>
                               <div className="grid grid-cols-5 gap-1.5">
-                                {[1, 2, 5, 10, 60].map(num => (
+                                {[1, 2, 3, 5, 10].map(num => (
                                   <button
                                     key={num}
                                     type="button"
@@ -1908,6 +1991,7 @@ export default function FlightDemo() {
                                   }).map((c) => {
                                     const details = getCityDetails(c, language);
                                     const isSelected = form.from === c;
+                                    const hasDirectRouteToDest = isRouteAvailable(c, form.to);
                                     const routeCount = (FLIGHT_ROUTES_MAP[details.code] || []).length;
                                     return (
                                       <button
@@ -1919,6 +2003,13 @@ export default function FlightDemo() {
                                           setForm(prev => {
                                             const allowed = getAvailableDestinations(c);
                                             const validTo = allowed.includes(prev.to) ? prev.to : (allowed[0] || "");
+                                            if (!allowed.includes(prev.to) && validTo) {
+                                              toast.info(
+                                                language === 'th'
+                                                  ? `สนามบิน ${details.cityName} ไม่มีเที่ยวบินไป ${toDetails.cityName} — ปรับปลายทางเป็น ${getCityDetails(validTo, language).cityName} แล้ว`
+                                                  : `${details.cityName} has no direct flight to ${toDetails.cityName} — adjusted destination to ${getCityDetails(validTo, language).cityName}`
+                                              );
+                                            }
                                             return { ...prev, from: c, to: validTo };
                                           });
                                           setFromPickerOpen(false);
@@ -1938,9 +2029,15 @@ export default function FlightDemo() {
                                           </div>
                                         </div>
                                         <div className="flex items-center gap-1.5 shrink-0">
-                                          <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
-                                            {routeCount} {language === "th" ? "เส้นทาง" : "routes"}
-                                          </span>
+                                          {hasDirectRouteToDest ? (
+                                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400">
+                                              {language === "th" ? `บินตรงไป ${toDetails.code}` : `Direct to ${toDetails.code}`}
+                                            </span>
+                                          ) : (
+                                            <span className="text-[9px] font-medium px-1.5 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500">
+                                              {routeCount} {language === "th" ? "เส้นทาง" : "routes"}
+                                            </span>
+                                          )}
                                           {isSelected && <Check className="w-3.5 h-3.5 text-blue-600 shrink-0" />}
                                         </div>
                                       </button>
@@ -2530,21 +2627,33 @@ export default function FlightDemo() {
                       <div className="space-y-3">
                         {currentFlightList.length === 0 ? (
                           <div className="text-center py-12 px-6 rounded-2xl bg-slate-50 dark:bg-slate-900/40 border border-slate-100 dark:border-slate-800">
-                            <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm font-display">{t('flight.no_flights')}</h4>
+                            <h4 className="font-bold text-slate-800 dark:text-slate-200 text-sm font-display">
+                              {!isRouteAvailable(originCityStr, destCityStr)
+                                ? (language === 'th'
+                                    ? `ไม่มีสายการบินรองรับเส้นทาง ${getCityLabel(originCityStr)} → ${getCityLabel(destCityStr)}`
+                                    : `No airlines operate direct flights for ${getCityLabel(originCityStr)} → ${getCityLabel(destCityStr)}`)
+                                : t('flight.no_flights')}
+                            </h4>
                             <p className="text-xs text-slate-400 mt-1 max-w-xs mx-auto">
-                              {t('flight.no_flights_desc')}
+                              {!isRouteAvailable(originCityStr, destCityStr)
+                                ? (language === 'th'
+                                    ? `เส้นทางนี้ยังไม่มีเที่ยวบินตรงให้บริการในระบบ กรุณาสลับเมืองหรือเลือกสนามบินอื่น`
+                                    : `There are currently no direct flights between these airports. Please select another route.`)
+                                : t('flight.no_flights_desc')}
                             </p>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setMaxPrice(2500);
-                                setSelectedClass("all");
-                                setSelectedTimeOfDay([]);
-                              }}
-                              className="mt-4 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs rounded-xl shadow-xs cursor-pointer font-display"
-                            >
-                              {t('flight.clear_filters')}
-                            </button>
+                            {isRouteAvailable(originCityStr, destCityStr) && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setMaxPrice(2500);
+                                  setSelectedClass("all");
+                                  setSelectedTimeOfDay([]);
+                                }}
+                                className="mt-4 px-4 py-2 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold text-xs rounded-xl shadow-xs cursor-pointer font-display"
+                              >
+                                {t('flight.clear_filters')}
+                              </button>
+                            )}
                           </div>
                         ) : (
                           currentFlightList.map((flight, idx) => {
@@ -2597,7 +2706,7 @@ export default function FlightDemo() {
 
                                     <div className="flex-1 flex flex-col items-center px-2">
                                       <span className="text-[10px] sm:text-[11px] text-slate-500 font-medium mb-1">
-                                        {language === 'th' ? flight.duration.replace('h', ' ชม.').replace('m', ' นาที') : flight.duration}
+                                        {formatFlightDuration(flight.duration, language)}
                                       </span>
                                       <div className="w-full flex items-center gap-1.5">
                                         <div className="h-[2px] flex-1 bg-slate-200 dark:bg-slate-700 rounded-full" />

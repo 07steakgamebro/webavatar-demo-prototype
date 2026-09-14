@@ -12,7 +12,7 @@ export interface CityMeta {
 }
 
 /**
- * 34 Airports according to "รายชื่อสนามบิน - ชีต1"
+ * 31 Airports according to "รายชื่อสนามบิน - ชีต1"
  * Format: สนามบิน (จังหวัด) / Airport (Province)
  */
 export const PRIMARY_CITIES_CONFIG: Record<string, CityMeta> = {
@@ -160,18 +160,6 @@ export const PRIMARY_CITIES_CONFIG: Record<string, CityMeta> = {
     airportEn: "Nakhon Phanom Airport",
     airportTh: "ท่าอากาศยานนครพนม",
   },
-  "นครราชสีมา (NAK)": {
-    code: "NAK",
-    icao: "VTUQ",
-    provinceTh: "นครราชสีมา",
-    provinceEn: "Nakhon Ratchasima",
-    nameEn: "Nakhon Ratchasima (Nakhon Ratchasima)",
-    nameTh: "นครราชสีมา (นครราชสีมา)",
-    fullNameTh: "จังหวัดนครราชสีมา (ท่าอากาศยานนครราชสีมา)",
-    fullNameEn: "Nakhon Ratchasima (Nakhon Ratchasima Airport)",
-    airportEn: "Nakhon Ratchasima Airport",
-    airportTh: "ท่าอากาศยานนครราชสีมา",
-  },
   "นครศรีธรรมราช (NST)": {
     code: "NST",
     icao: "VTSF",
@@ -243,30 +231,6 @@ export const PRIMARY_CITIES_CONFIG: Record<string, CityMeta> = {
     fullNameEn: "Phitsanulok (Phitsanulok Airport)",
     airportEn: "Phitsanulok Airport",
     airportTh: "ท่าอากาศยานพิษณุโลก",
-  },
-  "แพร่ (PRH)": {
-    code: "PRH",
-    icao: "VTCP",
-    provinceTh: "แพร่",
-    provinceEn: "Phrae",
-    nameEn: "Phrae (Phrae)",
-    nameTh: "แพร่ (แพร่)",
-    fullNameTh: "จังหวัดแพร่ (ท่าอากาศยานแพร่)",
-    fullNameEn: "Phrae (Phrae Airport)",
-    airportEn: "Phrae Airport",
-    airportTh: "ท่าอากาศยานแพร่",
-  },
-  "แม่ฮ่องสอน (HGN)": {
-    code: "HGN",
-    icao: "VTCH",
-    provinceTh: "แม่ฮ่องสอน",
-    provinceEn: "Mae Hong Son",
-    nameEn: "Mae Hong Son (Mae Hong Son)",
-    nameTh: "แม่ฮ่องสอน (แม่ฮ่องสอน)",
-    fullNameTh: "จังหวัดแม่ฮ่องสอน (ท่าอากาศยานแม่ฮ่องสอน)",
-    fullNameEn: "Mae Hong Son (Mae Hong Son Airport)",
-    airportEn: "Mae Hong Son Airport",
-    airportTh: "ท่าอากาศยานแม่ฮ่องสอน",
   },
   "เบตง (BTZ)": {
     code: "BTZ",
@@ -447,7 +411,7 @@ export const CITIES_CONFIG: Record<string, CityMeta> = {
 };
 
 /**
- * Ordered list of 34 cities according to sheet "รายชื่อสนามบิน - ชีต1"
+ * Ordered list of 31 cities according to sheet "รายชื่อสนามบิน - ชีต1"
  */
 export const CITIES = Object.keys(PRIMARY_CITIES_CONFIG);
 
@@ -468,15 +432,12 @@ export const FLIGHT_ROUTES_MAP: Record<string, string[]> = {
   TST: ["DMK"],
   MAQ: ["DMK"],
   KOP: ["DMK"],
-  NAK: [],
   NST: ["BKK", "DMK"],
   NAW: ["BKK", "DMK"],
   NNT: ["DMK"],
   BFV: ["BKK", "DMK"],
   HHQ: ["CNX"],
   PHS: ["DMK"],
-  PRH: [],
-  HGN: [],
   BTZ: ["HDY"],
   ROI: ["DMK"],
   UNN: ["DMK"],

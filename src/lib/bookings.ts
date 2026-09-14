@@ -11,6 +11,7 @@ export type FlightLeg = {
   airlineCode?: string;
   price?: number;
   seat?: string;
+  releasedSeat?: string;
   aircraftModel?: string;
   aircraftTail?: string;
   class?: string;
@@ -2754,6 +2755,8 @@ export type Booking = {
   phone: string;
   seat?: string;
   returnSeat?: string;
+  releasedSeat?: string;
+  releasedReturnSeat?: string;
   pricePerPax?: number;
   class?: string;
   aircraftModel?: string;
@@ -3887,7 +3890,8 @@ export function releaseSeatBooking(
   seatId: string,
   flightNo?: string,
   originCode?: string,
-  destCode?: string
+  destCode?: string,
+  bookingId?: string
 ): { updatedBookings: Booking[]; updatedLockedSeats: string[]; releasedBooking?: Booking } {
   const allBookings = getBookings();
   let releasedBooking: Booking | undefined;
@@ -3895,6 +3899,7 @@ export function releaseSeatBooking(
 
   for (const b of allBookings) {
     let bookingModified = false;
+    const isTargetBooking = Boolean(bookingId && b.id === bookingId);
     const bOrig = getAirportCode(b.from);
     const bDest = getAirportCode(b.to);
     const matchesRoute = (!originCode || bOrig === originCode) && (!destCode || bDest === destCode);
@@ -3907,27 +3912,39 @@ export function releaseSeatBooking(
 
     let newSeat = b.seat;
     let newReturnSeat = b.returnSeat;
+    let newReleasedSeat = b.releasedSeat;
+    let newReleasedReturnSeat = b.releasedReturnSeat;
     let newLegs = b.legs;
 
     // 1. Check main seat
     if (b.seat) {
       const seats = b.seat.split(",").map((s) => s.trim());
-      if (seats.includes(seatId) && matchesFlight && (matchesRoute || !originCode)) {
+      if (seats.includes(seatId) && (isTargetBooking || matchesFlight || matchesRoute || bOrig === originCode)) {
         bookingModified = true;
         releasedBooking = b;
         const remaining = seats.filter((s) => s !== seatId);
         newSeat = remaining.join(", ");
+        const currentReleased = newReleasedSeat ? newReleasedSeat.split(",").map((s) => s.trim()) : [];
+        if (!currentReleased.includes(seatId)) {
+          currentReleased.push(seatId);
+        }
+        newReleasedSeat = currentReleased.join(", ");
       }
     }
 
     // 2. Check returnSeat
     if (b.returnSeat) {
       const retSeats = b.returnSeat.split(",").map((s) => s.trim());
-      if (retSeats.includes(seatId) && matchesFlight) {
+      if (retSeats.includes(seatId) && (isTargetBooking || matchesFlight || matchesRoute)) {
         bookingModified = true;
         releasedBooking = b;
         const remaining = retSeats.filter((s) => s !== seatId);
         newReturnSeat = remaining.join(", ");
+        const currentReleased = newReleasedReturnSeat ? newReleasedReturnSeat.split(",").map((s) => s.trim()) : [];
+        if (!currentReleased.includes(seatId)) {
+          currentReleased.push(seatId);
+        }
+        newReleasedReturnSeat = currentReleased.join(", ");
       }
     }
 
@@ -3940,26 +3957,29 @@ export function releaseSeatBooking(
         const legDest = getAirportCode(l.to);
         const legRouteMatch = (!originCode || legOrig === originCode) && (!destCode || legDest === destCode);
         const legFlightMatch = !flightNo || l.flightNo === flightNo;
-        if (legSeats.includes(seatId) && (legFlightMatch || legRouteMatch)) {
+        if (legSeats.includes(seatId) && (isTargetBooking || legFlightMatch || legRouteMatch || legOrig === originCode)) {
           bookingModified = true;
           releasedBooking = b;
           const remaining = legSeats.filter((s) => s !== seatId);
-          return { ...l, seat: remaining.join(", ") };
+          const currentLegReleased = l.releasedSeat ? l.releasedSeat.split(",").map((s) => s.trim()) : [];
+          if (!currentLegReleased.includes(seatId)) {
+            currentLegReleased.push(seatId);
+          }
+          return { ...l, seat: remaining.join(", "), releasedSeat: currentLegReleased.join(", ") };
         }
         return l;
       });
     }
 
     if (bookingModified) {
-      const hasAnySeats = Boolean(newSeat || newReturnSeat || newLegs?.some((l) => Boolean(l.seat)));
-      if (hasAnySeats) {
-        updatedBookings.push({
-          ...b,
-          seat: newSeat,
-          returnSeat: newReturnSeat,
-          legs: newLegs,
-        });
-      }
+      updatedBookings.push({
+        ...b,
+        seat: newSeat,
+        returnSeat: newReturnSeat,
+        releasedSeat: newReleasedSeat,
+        releasedReturnSeat: newReleasedReturnSeat,
+        legs: newLegs,
+      });
     } else {
       updatedBookings.push(b);
     }
@@ -3973,6 +3993,11 @@ export function releaseSeatBooking(
   const currentLocked = getLockedSeats(flightNo);
   const updatedLocked = currentLocked.filter((s) => s !== seatId);
   saveLockedSeats(updatedLocked, flightNo);
+
+  const globalLocked = getLockedSeats();
+  if (globalLocked.includes(seatId)) {
+    saveLockedSeats(globalLocked.filter((s) => s !== seatId));
+  }
 
   return {
     updatedBookings,
