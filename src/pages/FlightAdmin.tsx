@@ -10,7 +10,7 @@ import {
   clearBookings,
   getLockedSeats,
   toggleSeatLock,
-  unlockAllSeats,
+  releaseAllSeatsForFlight,
   resetLockedSeatsToDefault,
   releaseSeatBooking,
   MOCK_FLEET,
@@ -263,7 +263,7 @@ export default function FlightAdmin() {
 
           // 1. One-way or Round-trip outbound route matching
           if (bOrigCode === curOrigCode && bDestCode === curDestCode) {
-            if (!b.outboundFlightNo || b.outboundFlightNo === selectedFlightNo || currentAircraft.flightNo === selectedFlightNo) {
+            if (!b.outboundFlightNo || b.outboundFlightNo === selectedFlightNo) {
               const seats = (b.seat || "").split(",").map((s) => s.trim());
               if (seats.includes(seatId)) return true;
             }
@@ -271,8 +271,8 @@ export default function FlightAdmin() {
 
           // 2. Round-trip return route matching (when current plane is operating the return leg)
           if (b.tripType === "round" && bOrigCode === curDestCode && bDestCode === curOrigCode) {
-            if (!b.inboundFlightNo || b.inboundFlightNo === selectedFlightNo || currentAircraft.flightNo === selectedFlightNo) {
-              const inSeats = (b.returnSeat || b.seat || "").split(",").map((s) => s.trim());
+            if (!b.inboundFlightNo || b.inboundFlightNo === selectedFlightNo) {
+              const inSeats = (b.returnSeat || "").split(",").map((s) => s.trim());
               if (inSeats.includes(seatId)) return true;
             }
           }
@@ -283,9 +283,9 @@ export default function FlightAdmin() {
               const legOrig = getAirportCode(l.from);
               const legDest = getAirportCode(l.to);
               const isRoute = legOrig === curOrigCode && legDest === curDestCode;
-              const isFlight = !l.flightNo || l.flightNo === selectedFlightNo || currentAircraft.flightNo === selectedFlightNo;
+              const isFlight = !l.flightNo || l.flightNo === selectedFlightNo;
               if (isRoute && isFlight) {
-                const legSeats = (l.seat || b.seat || "").split(",").map((s) => s.trim());
+                const legSeats = (l.seat || "").split(",").map((s) => s.trim());
                 return legSeats.includes(seatId);
               }
               return false;
@@ -299,7 +299,7 @@ export default function FlightAdmin() {
             if (seats.includes(seatId)) return true;
           }
           if (b.inboundFlightNo === selectedFlightNo && (!bOrigCode || bOrigCode === curDestCode) && (!bDestCode || bDestCode === curOrigCode)) {
-            const inSeats = (b.returnSeat || b.seat || "").split(",").map((s) => s.trim());
+            const inSeats = (b.returnSeat || "").split(",").map((s) => s.trim());
             if (inSeats.includes(seatId)) return true;
           }
 
@@ -388,8 +388,11 @@ export default function FlightAdmin() {
   };
 
   const handleUnlockAll = () => {
-    const updated = unlockAllSeats(selectedFlightNo);
-    setLockedSeatsState(updated);
+    const curOrigCode = currentAircraft.originCode || getAirportCode(currentAircraft.originCity || "");
+    const curDestCode = currentAircraft.destCode || getAirportCode(currentAircraft.destCity || "");
+    const result = releaseAllSeatsForFlight(selectedFlightNo, curOrigCode, curDestCode);
+    setItems(result.updatedBookings);
+    setLockedSeatsState(result.updatedLockedSeats);
     toast.success(t("flight_admin.toast_all_unlocked").replace("{flightNo}", selectedFlightNo));
   };
 
@@ -573,7 +576,7 @@ export default function FlightAdmin() {
                 .replace("{name}", seatInfo?.booking?.passengerName || t("flight_admin.passenger_anon"))
             : isLocked
             ? t("flight_admin.seat_locked_admin").replace("{seatId}", seatId)
-            : `${seatId} (${isBusiness ? (language === "th" ? "ชั้นธุรกิจ" : "Business Class") : (language === "th" ? "ชั้นประหยัด" : "Economy Class")}) - ${t("flight_admin.seat_available_click").replace("{seatId}", seatId)}`
+            : `${seatId} (${isBusiness ? t("flight.cabin_business") : t("flight.cabin_economy")}) - ${t("flight_admin.seat_available_click").replace("{seatId}", seatId)}`
         }
       >
         {/* Realistic Headrest Cushion (Right side) */}
@@ -967,40 +970,49 @@ export default function FlightAdmin() {
                                   key={plane.flightNo}
                                   layout
                                   onClick={() => setSelectedFlightNo(plane.flightNo)}
-                                  className={`p-2.5 rounded-xl cursor-pointer transition-all flex items-center justify-between border gap-2 min-w-0 overflow-hidden ${
+                                  className={`p-2.5 rounded-xl cursor-pointer transition-all flex flex-col gap-1.5 border min-w-0 ${
                                     isSelected
                                       ? "bg-slate-950 text-white dark:bg-white dark:text-slate-950 border-slate-950 dark:border-white shadow-md"
                                       : "bg-white dark:bg-slate-800/80 text-slate-800 dark:text-slate-200 border-slate-200/60 dark:border-slate-700/60 hover:border-slate-300 hover:shadow-2xs"
                                   }`}
                                 >
-                                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                                    <span className="font-mono font-bold text-xs shrink-0">
-                                      {plane.flightNo}
-                                    </span>
-                                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 ${
+                                  {/* Row 1: Flight No + Dest Badge <-> Price */}
+                                  <div className="flex items-center justify-between gap-2 min-w-0">
+                                    <div className="flex items-center gap-1.5 min-w-0">
+                                      <span className="font-mono font-bold text-xs shrink-0 whitespace-nowrap">
+                                        {plane.flightNo}
+                                      </span>
+                                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold shrink-0 whitespace-nowrap ${
+                                        isSelected
+                                          ? "bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900"
+                                          : "bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300"
+                                      }`}>
+                                        → {plane.destCode}
+                                      </span>
+                                    </div>
+                                    <span className={`text-xs font-bold font-mono shrink-0 whitespace-nowrap ${
                                       isSelected
-                                        ? "bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900"
-                                        : "bg-sky-100 dark:bg-sky-950 text-sky-700 dark:text-sky-300"
+                                        ? "text-sky-300 dark:text-sky-700 font-extrabold"
+                                        : "text-slate-900 dark:text-white"
                                     }`}>
-                                      → {plane.destCode}
+                                      {plane.priceStr}
                                     </span>
+                                  </div>
+
+                                  {/* Row 2: Destination City/Airport Name <-> Departure Time */}
+                                  <div className="flex items-center justify-between gap-2 min-w-0 text-[11px]">
                                     <span
                                       title={plane.destName}
-                                      className={`text-[10px] truncate min-w-0 hidden sm:inline-block lg:hidden xl:inline-block max-w-[85px] sm:max-w-[130px] xl:max-w-[90px] ${
+                                      className={`truncate min-w-0 font-medium ${
                                         isSelected ? "text-slate-300 dark:text-slate-700" : "text-slate-500 dark:text-slate-400"
                                       }`}
                                     >
                                       {plane.destName}
                                     </span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 text-right">
-                                    <span className={`text-[10px] font-mono shrink-0 ${
+                                    <span className={`text-[10px] font-mono shrink-0 whitespace-nowrap ${
                                       isSelected ? "text-slate-300 dark:text-slate-700" : "text-slate-400"
                                     }`}>
                                       {plane.depDate}
-                                    </span>
-                                    <span className="text-xs font-bold font-mono shrink-0">
-                                      {plane.priceStr}
                                     </span>
                                   </div>
                                 </motion.div>
@@ -1021,37 +1033,39 @@ export default function FlightAdmin() {
                           key={plane.flightNo}
                           layout
                           onClick={() => setSelectedFlightNo(plane.flightNo)}
-                          className={`px-3 py-2 rounded-xl cursor-pointer transition-all flex items-center justify-between border gap-2 min-w-0 overflow-hidden ${
+                          className={`px-2.5 sm:px-3 py-2 rounded-xl cursor-pointer transition-all flex flex-col gap-1 border min-w-0 ${
                             isSelected
                               ? "bg-slate-950 text-white dark:bg-white dark:text-slate-950 border-slate-950 dark:border-white shadow-md"
                               : "bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-200 border-slate-200/80 dark:border-slate-800 hover:border-slate-300 hover:shadow-2xs"
                           }`}
                         >
-                          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1">
-                            <span className="font-mono font-bold text-xs shrink-0">{plane.flightNo}</span>
-                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 ${
-                              isSelected
-                                ? "bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900"
-                                : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
-                            }`}>
-                              {plane.route}
-                            </span>
+                          <div className="flex items-center justify-between gap-2 min-w-0">
+                            <div className="flex items-center gap-1.5 min-w-0">
+                              <span className="font-mono font-bold text-xs shrink-0 whitespace-nowrap">{plane.flightNo}</span>
+                              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded shrink-0 whitespace-nowrap ${
+                                isSelected
+                                  ? "bg-white/20 text-white dark:bg-slate-900/20 dark:text-slate-900"
+                                  : "bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300"
+                              }`}>
+                                {plane.route}
+                              </span>
+                            </div>
+                            <span className="text-xs font-bold font-mono shrink-0 whitespace-nowrap">{plane.priceStr}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 min-w-0 text-[10px]">
                             <span
                               title={plane.airlineName}
-                              className={`text-[9px] truncate min-w-0 hidden md:inline-block lg:hidden xl:inline-block max-w-[80px] xl:max-w-[70px] ${
+                              className={`truncate min-w-0 font-medium ${
                                 isSelected ? "text-slate-300 dark:text-slate-600" : "text-slate-400"
                               }`}
                             >
                               {plane.airlineName}
                             </span>
-                          </div>
-                          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0 text-right">
-                            <span className={`text-[10px] font-mono shrink-0 ${
+                            <span className={`font-mono shrink-0 whitespace-nowrap ${
                               isSelected ? "text-slate-300 dark:text-slate-600" : "text-slate-400"
                             }`}>
                               {plane.depDate}
                             </span>
-                            <span className="text-xs font-bold font-mono shrink-0">{plane.priceStr}</span>
                           </div>
                         </motion.div>
                       );
@@ -1212,7 +1226,7 @@ export default function FlightAdmin() {
                         type="button"
                         onClick={toggleLiveStatus}
                         className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-2xl bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border border-sky-200/80 dark:border-sky-800 text-sky-700 dark:text-sky-300 hover:bg-sky-50 dark:hover:bg-sky-950/50 shadow-2xs text-xs font-bold transition-all cursor-pointer select-none"
-                        title={language === "th" ? "เปิดแถบสถานะ Live Status" : "Open Live Status Panel"}
+                        title={t("flight_admin.btn_open_live_status")}
                       >
                         <Activity className="w-3.5 h-3.5 text-sky-500 animate-pulse" />
                         <span>{t("flight_admin.live_status_title") || "Live Status"}</span>
@@ -1425,19 +1439,19 @@ export default function FlightAdmin() {
                   <div className="flex items-center flex-wrap gap-2 sm:gap-3 text-[10px] sm:text-[11px] select-none py-1">
                     <div className="flex items-center gap-1.5 shrink-0">
                       <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-[3px] bg-sky-100 dark:bg-sky-950/80 border border-sky-400 dark:border-sky-600 shadow-2xs shrink-0" />
-                      <span className="font-bold text-sky-800 dark:text-sky-300">{language === "th" ? "ชั้นธุรกิจ" : "Business"}</span>
+                      <span className="font-bold text-sky-800 dark:text-sky-300">{t("flight_admin.legend_business")}</span>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-[3px] bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 shadow-2xs shrink-0" />
-                      <span className="font-medium text-slate-700 dark:text-slate-300">{language === "th" ? "ชั้นประหยัด" : "Economy"}</span>
+                      <span className="font-medium text-slate-700 dark:text-slate-300">{t("flight_admin.legend_economy")}</span>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-[3px] bg-amber-600 border border-amber-700 shadow-2xs shrink-0" />
-                      <span className="font-semibold text-amber-700 dark:text-amber-400">{language === "th" ? "จองแล้ว" : "Booked"}</span>
+                      <span className="font-semibold text-amber-700 dark:text-amber-400">{t("flight_admin.legend_booked")}</span>
                     </div>
                     <div className="flex items-center gap-1.5 shrink-0">
                       <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-[3px] bg-[#181a20] border border-slate-700 shadow-2xs shrink-0" />
-                      <span className="font-semibold text-slate-600 dark:text-slate-400">{language === "th" ? "แอดมินล็อก" : "Locked"}</span>
+                      <span className="font-semibold text-slate-600 dark:text-slate-400">{t("flight_admin.legend_locked")}</span>
                     </div>
                   </div>
                 </div>
@@ -2022,7 +2036,7 @@ export default function FlightAdmin() {
                         <button
                           type="button"
                           onClick={refreshData}
-                          title={language === "th" ? "รีเฟรชข้อมูล" : "Refresh"}
+                          title={t("flight_admin.btn_refresh_data")}
                           className="p-1.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                         >
                           <ArrowUpRight className="w-4 h-4" />
@@ -2030,7 +2044,7 @@ export default function FlightAdmin() {
                         <button
                           type="button"
                           onClick={toggleLiveStatus}
-                          title={language === "th" ? "ปิด / ซ่อนแถบนี้" : "Close Live Status Panel"}
+                          title={t("flight_admin.btn_close_live_status")}
                           className="p-1.5 text-slate-400 hover:text-red-500 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
                         >
                           <PanelRightClose className="w-4 h-4" />
@@ -2339,7 +2353,7 @@ export default function FlightAdmin() {
                                     ) : leg.releasedSeat ? (
                                       <span className="text-slate-400 dark:text-slate-500 font-normal italic text-[11px]">
                                         <span className="line-through decoration-slate-400">{leg.releasedSeat}</span>
-                                        <span className="no-underline ml-1">({language === "th" ? "ปลดล็อกแล้ว" : "Released"})</span>
+                                        <span className="no-underline ml-1">({t("flight_admin.released_badge")})</span>
                                       </span>
                                     ) : (
                                       <span className="text-slate-400 font-normal italic text-[11px]">
@@ -2360,7 +2374,7 @@ export default function FlightAdmin() {
                                   ) : b.releasedSeat ? (
                                     <span className="text-slate-400 dark:text-slate-500 font-normal italic text-[11px]">
                                       <span className="line-through decoration-slate-400">{b.releasedSeat}</span>
-                                      <span className="no-underline ml-1">({language === "th" ? "ปลดล็อกแล้ว" : "Released"})</span>
+                                      <span className="no-underline ml-1">({t("flight_admin.released_badge")})</span>
                                     </span>
                                   ) : (
                                     <span className="text-slate-400 font-normal italic text-[11px]">
@@ -2377,7 +2391,7 @@ export default function FlightAdmin() {
                                   ) : b.releasedReturnSeat ? (
                                     <span className="text-slate-400 dark:text-slate-500 font-normal italic text-[11px]">
                                       <span className="line-through decoration-slate-400">{b.releasedReturnSeat}</span>
-                                      <span className="no-underline ml-1">({language === "th" ? "ปลดล็อกแล้ว" : "Released"})</span>
+                                      <span className="no-underline ml-1">({t("flight_admin.released_badge")})</span>
                                     </span>
                                   ) : (
                                     <span className="text-slate-400 font-normal italic text-[11px]">
@@ -2392,7 +2406,7 @@ export default function FlightAdmin() {
                               ) : b.releasedSeat ? (
                                 <span className="text-slate-400 dark:text-slate-500 font-normal italic text-[11px]">
                                   <span className="line-through decoration-slate-400">{b.releasedSeat}</span>
-                                  <span className="no-underline ml-1">({language === "th" ? "ปลดล็อกแล้ว" : "Released"})</span>
+                                  <span className="no-underline ml-1">({t("flight_admin.released_badge")})</span>
                                 </span>
                               ) : (
                                 <span className="text-slate-400 font-normal italic text-[11px]">
