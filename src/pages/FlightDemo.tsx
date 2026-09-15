@@ -355,7 +355,7 @@ export default function FlightDemo() {
   const [activeFilter, setActiveFilter] = useState<"cheapest" | "best" | "quickest">("cheapest");
 
   // Advanced Filters States
-  const [maxPrice, setMaxPrice] = useState<number>(2500);
+  const [maxPrice, setMaxPrice] = useState<number>(4000);
   const [selectedClass, setSelectedClass] = useState<"all" | "economy" | "business">("all");
   const [selectedTimeOfDay, setSelectedTimeOfDay] = useState<string[]>([]);
   const [selectedAirlines, setSelectedAirlines] = useState<string[]>([]);
@@ -383,142 +383,81 @@ export default function FlightDemo() {
     if (matchedFleet.length === 0) {
       return [];
     }
-    const baseAircraft = matchedFleet[0];
 
-    const basePrice = baseAircraft?.price || (toCity.includes("ภูเก็ต") || toCity.includes("หาดใหญ่") ? 990 : 890);
-    const baseDepTime = baseAircraft?.depTime || (isReturn ? "07:00" : "06:15");
-    const baseArrTime = baseAircraft?.arrTime || (isReturn ? "08:15" : "07:30");
-    const baseDuration = baseAircraft?.durationStr || "1h 15m";
+    const list: any[] = [];
 
-    const list = [
-      {
-        id: isReturn ? "ret-1" : customFrom ? `mc-${fromCity}-${toCity}-1` : "out-1",
-        airline: mockAirlines[0], // Botnoi Air
-        flightNo: baseAircraft?.flightNo || (isReturn ? "BTN901" : "BTN201"),
-        departTime: baseDepTime,
-        arrivalTime: baseArrTime,
-        duration: baseDuration,
-        price: basePrice,
+    matchedFleet.forEach((plane) => {
+      const airline = mockAirlines.find((a) => a.code === plane.airlineCode) || {
+        name: plane.airlineName,
+        code: plane.airlineCode,
+        logoBg: plane.airlineCode === "BTN" ? "bg-sky-600" : plane.airlineCode === "THA" ? "bg-purple-800" : "bg-sky-400",
+        rating: 4.8,
+      };
+
+      const depHour = parseInt((plane.depTime || "08:00").split(":")[0], 10);
+      const timeOfDay = depHour < 12 ? "morning" : depHour < 17 ? "afternoon" : "evening";
+
+      // 1. Economy Class Option (using exact price, time, aircraft, and tail number from MOCK_FLEET)
+      list.push({
+        id: isReturn ? `ret-${plane.flightNo}-eco` : customFrom ? `mc-${fromCode}-${toCode}-${plane.flightNo}-eco` : `out-${plane.flightNo}-eco`,
+        airline,
+        flightNo: plane.flightNo,
+        departTime: plane.depTime,
+        arrivalTime: plane.arrTime,
+        duration: plane.durationStr || "1 ชม. 15 นาที",
+        price: plane.price || 990,
         class: "economy",
         aircraft: {
-          model: baseAircraft?.model || "Airbus A320-200",
-          tailNumber: baseAircraft?.tailNumber || (isReturn ? "HS-BNB" : "HS-BNA"),
-          type: baseAircraft?.type || "Narrow-body Jet",
+          model: plane.model,
+          tailNumber: plane.tailNumber,
+          type: plane.type,
         },
-        timeOfDay: "morning",
+        timeOfDay,
         type: "cheapest",
-        discount: language === 'th' ? 'ลด 15%' : `15% ${t('flight.off_tag')}`
-      },
-      {
-        id: isReturn ? "ret-2" : customFrom ? `mc-${fromCity}-${toCity}-2` : "out-2",
-        airline: mockAirlines[1], // Thai Airways
-        flightNo: isReturn ? "THA304" : "THA302",
-        departTime: isReturn ? "10:30" : "09:45",
-        arrivalTime: isReturn ? "11:45" : "11:00",
-        duration: baseDuration,
-        price: Math.round(basePrice * 1.15),
-        class: "economy",
-        aircraft: {
-          model: "Airbus A350-900",
-          tailNumber: isReturn ? "HS-THD" : "HS-THB",
-          type: "Wide-body Jet",
-        },
-        timeOfDay: "morning",
-        type: "best",
-        discount: "None"
-      },
-      {
-        id: isReturn ? "ret-3" : customFrom ? `mc-${fromCity}-${toCity}-3` : "out-3",
-        airline: mockAirlines[0], // Botnoi Air
-        flightNo: isReturn ? "BTN903" : "BTN203",
-        departTime: isReturn ? "13:15" : "13:30",
-        arrivalTime: isReturn ? "14:30" : "14:45",
-        duration: baseDuration,
-        price: Math.round(basePrice * 0.9), // Promo
-        class: "economy",
-        aircraft: {
-          model: "Airbus A321neo",
-          tailNumber: isReturn ? "HS-BND" : "HS-BNC",
-          type: "Narrow-body Jet",
-        },
-        timeOfDay: "afternoon",
-        type: "cheapest",
-        discount: language === 'th' ? 'ลด 20%' : `20% ${t('flight.off_tag')}`
-      },
-      {
-        id: isReturn ? "ret-4" : customFrom ? `mc-${fromCity}-${toCity}-4` : "out-4",
-        airline: mockAirlines[2], // Bangkok Airways
-        flightNo: isReturn ? "BKP404" : "BKP402",
-        departTime: isReturn ? "16:45" : "15:15",
-        arrivalTime: isReturn ? "18:00" : "16:30",
-        duration: baseDuration,
-        price: Math.round(basePrice * 1.3),
-        class: "business",
-        aircraft: {
-          model: "ATR 72-600",
-          tailNumber: isReturn ? "HS-PGB" : "HS-PGA",
-          type: "Regional Turboprop",
-        },
-        timeOfDay: "afternoon",
-        type: "best",
-        discount: "None"
-      },
-      {
-        id: isReturn ? "ret-5" : customFrom ? `mc-${fromCity}-${toCity}-5` : "out-5",
-        airline: mockAirlines[1], // Thai Airways
-        flightNo: isReturn ? "THA308" : "THA306",
-        departTime: isReturn ? "19:30" : "18:45",
-        arrivalTime: isReturn ? "20:45" : "20:00",
-        duration: baseDuration,
-        price: Math.round(basePrice * 2.2), // Business Premium
-        class: "business",
-        aircraft: {
-          model: "Boeing 777-300ER",
-          tailNumber: isReturn ? "HS-TTB" : "HS-TTA",
-          type: "Wide-body Jet",
-        },
-        timeOfDay: "evening",
-        type: "quickest",
-        discount: "None"
-      },
-      {
-        id: isReturn ? "ret-6" : customFrom ? `mc-${fromCity}-${toCity}-6` : "out-6",
-        airline: mockAirlines[2], // Bangkok Airways
-        flightNo: isReturn ? "BKP408" : "BKP406",
-        departTime: isReturn ? "21:30" : "21:00",
-        arrivalTime: isReturn ? "22:45" : "22:15",
-        duration: baseDuration,
-        price: Math.round(basePrice * 1.1),
-        class: "economy",
-        aircraft: {
-          model: "Airbus A320-200",
-          tailNumber: isReturn ? "HS-PGD" : "HS-PGC",
-          type: "Narrow-body Jet",
-        },
-        timeOfDay: "evening",
-        type: "quickest",
-        discount: language === 'th' ? 'ลด 10%' : `10% ${t('flight.off_tag')}`
+        discount: language === "th" ? "ลด 15%" : `15% ${t("flight.off_tag")}`,
+      });
+
+      // 2. Business Class Option if aircraft has business class capacity
+      if (plane.businessSeats && plane.businessSeats > 0) {
+        list.push({
+          id: isReturn ? `ret-${plane.flightNo}-biz` : customFrom ? `mc-${fromCode}-${toCode}-${plane.flightNo}-biz` : `out-${plane.flightNo}-biz`,
+          airline,
+          flightNo: plane.flightNo,
+          departTime: plane.depTime,
+          arrivalTime: plane.arrTime,
+          duration: plane.durationStr || "1 ชม. 15 นาที",
+          price: Math.round((plane.price || 990) * 1.6),
+          class: "business",
+          aircraft: {
+            model: plane.model,
+            tailNumber: plane.tailNumber,
+            type: plane.type,
+          },
+          timeOfDay,
+          type: "best",
+          discount: "None",
+        });
       }
-    ];
+    });
 
     let filtered = list;
 
     // Apply Price Filter
-    filtered = filtered.filter(f => f.price <= maxPrice);
+    filtered = filtered.filter((f) => f.price <= maxPrice);
 
     // Apply Class Filter
     if (selectedClass !== "all") {
-      filtered = filtered.filter(f => f.class === selectedClass);
+      filtered = filtered.filter((f) => f.class === selectedClass);
     }
 
     // Apply Time of Day Filter
     if (selectedTimeOfDay.length > 0) {
-      filtered = filtered.filter(f => selectedTimeOfDay.includes(f.timeOfDay));
+      filtered = filtered.filter((f) => selectedTimeOfDay.includes(f.timeOfDay));
     }
 
     // Apply Airline Filter
     if (selectedAirlines.length > 0) {
-      filtered = filtered.filter(f => selectedAirlines.includes(f.airline.code));
+      filtered = filtered.filter((f) => selectedAirlines.includes(f.airline.code));
     }
 
     if (activeFilter === "cheapest") {
@@ -581,15 +520,15 @@ export default function FlightDemo() {
           from: leg.from,
           to: leg.to,
           departDate: leg.date,
-          flightNo: flight?.flightNo || routeAircraft?.flightNo || `BTN20${idx + 1}`,
-          aircraftModel: flight?.aircraft?.model || routeAircraft?.model || "Airbus A320-200",
-          aircraftTail: flight?.aircraft?.tailNumber || routeAircraft?.tailNumber || "HS-BNA",
+          flightNo: flight?.flightNo || routeAircraft?.flightNo || "BTN201",
+          aircraftModel: flight?.aircraft?.model || routeAircraft?.model || "Airbus A320neo",
+          aircraftTail: flight?.aircraft?.tailNumber || routeAircraft?.tailNumber || "",
           cabinClass: flight?.class || (selectedClass !== "all" ? selectedClass : "economy"),
           departTime: flight?.departTime || routeAircraft?.depTime || "08:00",
           arrivalTime: flight?.arrivalTime || routeAircraft?.arrTime || "09:15",
           airlineName: flight?.airline?.name || routeAircraft?.airlineName || "Botnoi Air",
           airlineCode: flight?.airline?.code || routeAircraft?.airlineCode || "BTN",
-          price: flight?.price || routeAircraft?.price || 890,
+          price: flight?.price || routeAircraft?.price || 990,
         };
       });
     } else if (tripType === "round") {
@@ -600,7 +539,7 @@ export default function FlightDemo() {
         (p) => p.originCode === getAirportCode(form.to) && p.destCode === getAirportCode(form.from)
       );
       const outAircraft = outFleet[0];
-      const inAircraft = inFleet.length > 1 ? inFleet[1] : (inFleet[0] || undefined);
+      const inAircraft = inFleet[0];
       return [
         {
           legIndex: 0,
@@ -609,14 +548,14 @@ export default function FlightDemo() {
           to: form.to,
           departDate: form.departDate,
           flightNo: selectedOutboundFlight?.flightNo || outAircraft?.flightNo || "BTN201",
-          aircraftModel: selectedOutboundFlight?.aircraft?.model || outAircraft?.model || "Airbus A320-200",
-          aircraftTail: selectedOutboundFlight?.aircraft?.tailNumber || outAircraft?.tailNumber || "HS-BNA",
+          aircraftModel: selectedOutboundFlight?.aircraft?.model || outAircraft?.model || "Airbus A320neo",
+          aircraftTail: selectedOutboundFlight?.aircraft?.tailNumber || outAircraft?.tailNumber || "",
           cabinClass: selectedOutboundFlight?.class || (selectedClass !== "all" ? selectedClass : "economy"),
           departTime: selectedOutboundFlight?.departTime || outAircraft?.depTime || "08:00",
           arrivalTime: selectedOutboundFlight?.arrivalTime || outAircraft?.arrTime || "09:15",
           airlineName: selectedOutboundFlight?.airline?.name || outAircraft?.airlineName || "Botnoi Air",
           airlineCode: selectedOutboundFlight?.airline?.code || outAircraft?.airlineCode || "BTN",
-          price: selectedOutboundFlight?.price || outAircraft?.price || 890,
+          price: selectedOutboundFlight?.price || outAircraft?.price || 990,
         },
         {
           legIndex: 1,
@@ -624,15 +563,15 @@ export default function FlightDemo() {
           from: form.to,
           to: form.from,
           departDate: form.returnDate,
-          flightNo: selectedInboundFlight?.flightNo || inAircraft?.flightNo || "BTN202",
-          aircraftModel: selectedInboundFlight?.aircraft?.model || inAircraft?.model || "Airbus A350-900",
-          aircraftTail: selectedInboundFlight?.aircraft?.tailNumber || inAircraft?.tailNumber || "HS-BNB",
+          flightNo: selectedInboundFlight?.flightNo || inAircraft?.flightNo || (outAircraft ? `BTN${parseInt(outAircraft.flightNo.replace(/\D/g, "") || "201", 10) + 1}` : "BTN202"),
+          aircraftModel: selectedInboundFlight?.aircraft?.model || inAircraft?.model || outAircraft?.model || "Airbus A320neo",
+          aircraftTail: selectedInboundFlight?.aircraft?.tailNumber || inAircraft?.tailNumber || outAircraft?.tailNumber || "",
           cabinClass: selectedInboundFlight?.class || (selectedClass !== "all" ? selectedClass : "economy"),
-          departTime: selectedInboundFlight?.departTime || inAircraft?.depTime || "17:00",
-          arrivalTime: selectedInboundFlight?.arrivalTime || inAircraft?.arrTime || "18:15",
-          airlineName: selectedInboundFlight?.airline?.name || inAircraft?.airlineName || "Botnoi Air",
-          airlineCode: selectedInboundFlight?.airline?.code || inAircraft?.airlineCode || "BTN",
-          price: selectedInboundFlight?.price || inAircraft?.price || 890,
+          departTime: selectedInboundFlight?.departTime || inAircraft?.depTime || "16:00",
+          arrivalTime: selectedInboundFlight?.arrivalTime || inAircraft?.arrTime || "17:15",
+          airlineName: selectedInboundFlight?.airline?.name || inAircraft?.airlineName || outAircraft?.airlineName || "Botnoi Air",
+          airlineCode: selectedInboundFlight?.airline?.code || inAircraft?.airlineCode || outAircraft?.airlineCode || "BTN",
+          price: selectedInboundFlight?.price || inAircraft?.price || outAircraft?.price || 990,
         },
       ];
     } else {
@@ -648,14 +587,14 @@ export default function FlightDemo() {
           to: form.to,
           departDate: form.departDate,
           flightNo: selectedOutboundFlight?.flightNo || routeAircraft?.flightNo || "BTN201",
-          aircraftModel: selectedOutboundFlight?.aircraft?.model || routeAircraft?.model || "Airbus A320-200",
-          aircraftTail: selectedOutboundFlight?.aircraft?.tailNumber || routeAircraft?.tailNumber || "HS-BNA",
+          aircraftModel: selectedOutboundFlight?.aircraft?.model || routeAircraft?.model || "Airbus A320neo",
+          aircraftTail: selectedOutboundFlight?.aircraft?.tailNumber || routeAircraft?.tailNumber || "",
           cabinClass: selectedOutboundFlight?.class || (selectedClass !== "all" ? selectedClass : "economy"),
           departTime: selectedOutboundFlight?.departTime || routeAircraft?.depTime || "08:00",
           arrivalTime: selectedOutboundFlight?.arrivalTime || routeAircraft?.arrTime || "09:15",
           airlineName: selectedOutboundFlight?.airline?.name || routeAircraft?.airlineName || "Botnoi Air",
           airlineCode: selectedOutboundFlight?.airline?.code || routeAircraft?.airlineCode || "BTN",
-          price: selectedOutboundFlight?.price || routeAircraft?.price || 890,
+          price: selectedOutboundFlight?.price || routeAircraft?.price || 990,
         },
       ];
     }
@@ -931,27 +870,49 @@ export default function FlightDemo() {
         .filter(Boolean);
       const checkOrigCode = getAirportCode(leg.from);
       const checkDestCode = getAirportCode(leg.to);
+      const checkFlightNo = leg.flightNo;
+      const checkDepartDate = leg.departDate;
 
       const takenSeat = checkSeats.find((seat) =>
         existingBookings.some((b: Booking) => {
           // Check outbound
-          if (getAirportCode(b.from) === checkOrigCode && getAirportCode(b.to) === checkDestCode) {
+          const outOrig = getAirportCode(b.from);
+          const outDest = getAirportCode(b.to);
+          const outFlightMatch = !checkFlightNo || !b.outboundFlightNo || b.outboundFlightNo === checkFlightNo;
+          const outRouteMatch = outOrig === checkOrigCode && outDest === checkDestCode;
+          const outDateMatch = !checkDepartDate || !b.departDate || b.departDate === checkDepartDate;
+
+          if (outFlightMatch && outRouteMatch && outDateMatch) {
             const seats = (b.seat || "").split(",").map((s) => s.trim());
-            if (seats.includes(seat) && (!leg.departDate || b.departDate === leg.departDate)) return true;
+            if (seats.includes(seat)) return true;
           }
+
           // Check return
-          if (b.tripType === "round" && getAirportCode(b.to) === checkOrigCode && getAirportCode(b.from) === checkDestCode) {
-            const seats = (b.returnSeat || b.seat || "").split(",").map((s) => s.trim());
-            if (seats.includes(seat) && (!leg.departDate || b.returnDate === leg.departDate)) return true;
+          if (b.tripType === "round") {
+            const inOrig = getAirportCode(b.to);
+            const inDest = getAirportCode(b.from);
+            const inFlightMatch = !checkFlightNo || !b.inboundFlightNo || b.inboundFlightNo === checkFlightNo;
+            const inRouteMatch = inOrig === checkOrigCode && inDest === checkDestCode;
+            const inDateMatch = !checkDepartDate || !b.returnDate || b.returnDate === checkDepartDate;
+
+            if (inFlightMatch && inRouteMatch && inDateMatch) {
+              const seats = (b.returnSeat || b.seat || "").split(",").map((s) => s.trim());
+              if (seats.includes(seat)) return true;
+            }
           }
+
           // Check legs
           if (b.legs && b.legs.length > 0) {
             return b.legs.some((l) => {
               const lOrig = getAirportCode(l.from);
               const lDest = getAirportCode(l.to);
-              if (lOrig === checkOrigCode && lDest === checkDestCode) {
+              const lFlightMatch = !checkFlightNo || !l.flightNo || l.flightNo === checkFlightNo;
+              const lRouteMatch = lOrig === checkOrigCode && lDest === checkDestCode;
+              const lDateMatch = !checkDepartDate || !l.departDate || l.departDate === checkDepartDate;
+
+              if (lFlightMatch && lRouteMatch && lDateMatch) {
                 const seats = (l.seat || b.seat || "").split(",").map((s) => s.trim());
-                return seats.includes(seat) && (!leg.departDate || l.departDate === leg.departDate);
+                return seats.includes(seat);
               }
               return false;
             });
@@ -3088,13 +3049,13 @@ export default function FlightDemo() {
                             <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                               <div className="flex items-center gap-2">
                                 <label className="text-[10px] font-bold uppercase tracking-wider block text-[var(--muted-foreground)]">
-                                  {t('flight.modal_seat')} ({language === 'th' ? `แยกเลือกที่นั่งตามเที่ยวบิน · ผู้โดยสาร ${form.passengers} ท่าน` : `Select per flight leg · ${form.passengers} Passenger(s)`})
+                                  {t('flight.modal_seat')} ({t('flight.select_per_leg_hint').replace('{count}', String(form.passengers))})
                                 </label>
                                 <span className="text-rose-500 font-bold">*</span>
                               </div>
                               {isSeatInvalid && (
                                 <span className="text-[10px] font-extrabold text-rose-700 dark:text-rose-300 bg-rose-200/80 dark:bg-rose-900/80 px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse">
-                                  {language === 'th' ? 'กรุณาเลือกที่นั่งให้ครบทุกเที่ยวบิน' : 'Select seats for all flights'}
+                                  {t('flight.select_seats_all_flights_badge')}
                                 </span>
                               )}
                             </div>
@@ -3131,14 +3092,14 @@ export default function FlightDemo() {
                                           </span>
                                         </div>
                                         <div className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-1.5">
-                                          <span>{language === 'th' ? 'ที่นั่ง:' : 'Seat:'}</span>
+                                          <span>{t('flight.seat_leg_label')}</span>
                                           {isLegComplete ? (
                                             <span className="font-extrabold text-sky-600 dark:text-sky-400 bg-sky-100/80 dark:bg-sky-900/80 px-2 py-0.5 rounded-md">
                                               {legSeatsStr}
                                             </span>
                                           ) : (
                                             <span className="text-amber-600 dark:text-amber-400 font-medium">
-                                              {legSeatsArr.length > 0 ? `${legSeatsStr} (${legSeatsArr.length}/${form.passengers})` : (language === 'th' ? 'ยังไม่ได้เลือก' : 'Not selected')}
+                                              {legSeatsArr.length > 0 ? `${legSeatsStr} (${legSeatsArr.length}/${form.passengers})` : t('flight.seat_not_selected')}
                                             </span>
                                           )}
                                         </div>
@@ -3155,7 +3116,7 @@ export default function FlightDemo() {
                                       }}
                                       className="px-3.5 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs shadow-2xs hover:shadow-xs active:scale-95 transition-all cursor-pointer shrink-0 self-end sm:self-center"
                                     >
-                                      {isLegComplete ? (language === 'th' ? 'เปลี่ยนที่นั่ง' : 'Change') : (language === 'th' ? 'เลือกที่นั่ง' : 'Select Seat')}
+                                      {isLegComplete ? t('flight.change_seat') : t('flight.select_seat')}
                                     </button>
                                   </div>
                                 );
@@ -3164,7 +3125,7 @@ export default function FlightDemo() {
 
                             {isSeatInvalid && (
                               <p className="mt-2 text-xs font-bold text-rose-600 dark:text-rose-400 flex items-center gap-1">
-                                <span>⚠️ {language === 'th' ? `กรุณาเลือกที่นั่งให้ครบทุกเที่ยวบิน (เที่ยวละ ${form.passengers} ที่นั่ง)` : `Please select ${form.passengers} seat(s) for each flight leg.`}</span>
+                                <span>⚠️ {t('flight.select_seats_for_all_legs_err').replace('{count}', String(form.passengers))}</span>
                               </p>
                             )}
                           </div>
@@ -3580,13 +3541,18 @@ function TicketModal({ booking, open, onClose }: { booking: any, open: boolean, 
   const originCity = currentLeg ? currentLeg.from : booking.from;
   const destCity = currentLeg ? currentLeg.to : booking.to;
 
-  const flightNumber = currentLeg?.flightNo || (activeLeg === 1 && booking.inboundFlightNo ? booking.inboundFlightNo : booking.outboundFlightNo) || "BTN203";
-  const aircraftModel = currentLeg?.aircraftModel || (activeLeg === 1 && booking.inboundAircraftModel ? booking.inboundAircraftModel : booking.aircraftModel) || "Airbus A320-200";
-  const aircraftTail = currentLeg?.aircraftTail || (activeLeg === 1 && booking.inboundAircraftTail ? booking.inboundAircraftTail : booking.aircraftTail) || "";
-  const seatNumber = currentLeg?.seat || (activeLeg === 1 && booking.returnSeat ? booking.returnSeat : booking.seat) || "8C";
+  const rawFlightNo = currentLeg?.flightNo || (activeLeg === 1 && booking.inboundFlightNo ? booking.inboundFlightNo : booking.outboundFlightNo);
+  const matchedAircraft = rawFlightNo
+    ? MOCK_FLEET.find((f) => f.flightNo === rawFlightNo)
+    : MOCK_FLEET.find((f) => f.originCode === getCode(originCity) && f.destCode === getCode(destCity));
+
+  const flightNumber = rawFlightNo || matchedAircraft?.flightNo || "BTN201";
+  const aircraftModel = currentLeg?.aircraftModel || (activeLeg === 1 && booking.inboundAircraftModel ? booking.inboundAircraftModel : booking.aircraftModel) || matchedAircraft?.model || "Airbus A320neo";
+  const aircraftTail = currentLeg?.aircraftTail || (activeLeg === 1 && booking.inboundAircraftTail ? booking.inboundAircraftTail : booking.aircraftTail) || matchedAircraft?.tailNumber || "";
+  const seatNumber = currentLeg?.seat || (activeLeg === 1 && booking.returnSeat ? booking.returnSeat : booking.seat) || "-";
   const flightClass = (currentLeg?.class || booking.class) === "business" ? t('flight.cabin_business') : t('flight.cabin_economy');
 
-  const basePrice = booking.pricePerPax || (hasMultipleLegs ? booking.legs.reduce((sum: number, l: any) => sum + (l.price || 0), 0) : 890);
+  const basePrice = booking.pricePerPax || currentLeg?.price || matchedAircraft?.price || (hasMultipleLegs ? booking.legs.reduce((sum: number, l: any) => sum + (l.price || 0), 0) : 990);
   const totalPrice = basePrice * (booking.passengers || 1);
 
   // Calculate discount from promo codes (e.g. SKYPROMO2026, PROMO2026)
@@ -3884,51 +3850,80 @@ function SeatMapModal({
     const flightNo = currentLeg.flightNo;
     const curOrigCode = getAirportCode(currentLeg.from);
     const curDestCode = getAirportCode(currentLeg.to);
+    const curDepartDate = currentLeg.departDate;
     const adminLocked = getLockedSeats(flightNo);
     const existing = getBookings();
 
     const booked = existing
       .filter((b: Booking) => {
+        // Must match flightNo if available
         if (flightNo && (b.outboundFlightNo === flightNo || b.inboundFlightNo === flightNo || b.legs?.some((l) => l.flightNo === flightNo))) {
-          return true;
+          if (curDepartDate) {
+            const dateMatch =
+              (b.outboundFlightNo === flightNo && (!b.departDate || b.departDate === curDepartDate)) ||
+              (b.inboundFlightNo === flightNo && (!b.returnDate || b.returnDate === curDepartDate)) ||
+              b.legs?.some((l) => l.flightNo === flightNo && (!l.departDate || l.departDate === curDepartDate));
+            if (dateMatch) return true;
+          } else {
+            return true;
+          }
         }
-        if (b.legs && b.legs.length > 0) {
-          return b.legs.some((l) => {
-            const lOrig = getAirportCode(l.from);
-            const lDest = getAirportCode(l.to);
-            return lOrig === curOrigCode && lDest === curDestCode;
-          });
+        // Fallback for bookings without flightNo: match route AND date strictly
+        if (!b.outboundFlightNo && !b.inboundFlightNo && (!b.legs || b.legs.length === 0)) {
+          const bOrig = getAirportCode(b.from);
+          const bDest = getAirportCode(b.to);
+          const routeMatch = (bOrig === curOrigCode && bDest === curDestCode) ||
+                             (b.tripType === "round" && bOrig === curDestCode && bDest === curOrigCode);
+          if (routeMatch && (!curDepartDate || !b.departDate || b.departDate === curDepartDate)) {
+            return true;
+          }
         }
-        const bOrig = getAirportCode(b.from);
-        const bDest = getAirportCode(b.to);
-        if (bOrig === curOrigCode && bDest === curDestCode) return true;
-        if (b.tripType === "round" && bOrig === curDestCode && bDest === curOrigCode) return true;
         return false;
       })
       .flatMap((b: Booking) => {
         const seats: string[] = [];
+
+        // Check legs
         if (b.legs && b.legs.length > 0) {
-          const leg = b.legs.find((l) => {
+          b.legs.forEach((l) => {
             const lOrig = getAirportCode(l.from);
             const lDest = getAirportCode(l.to);
-            return (flightNo && l.flightNo === flightNo) || (lOrig === curOrigCode && lDest === curDestCode);
+            const flightMatch = !flightNo || !l.flightNo || l.flightNo === flightNo;
+            const routeMatch = lOrig === curOrigCode && lDest === curDestCode;
+            const dateMatch = !curDepartDate || !l.departDate || l.departDate === curDepartDate;
+            if (flightMatch && routeMatch && dateMatch && l.seat) {
+              seats.push(...l.seat.split(",").map((s) => s.trim()));
+            }
           });
-          if (leg && leg.seat) {
-            seats.push(...leg.seat.split(",").map((s) => s.trim()));
-          }
         }
-        if (b.tripType === "round" && getAirportCode(b.to) === curOrigCode && getAirportCode(b.from) === curDestCode) {
-          if (b.returnSeat) {
-            seats.push(...b.returnSeat.split(",").map((s) => s.trim()));
-          }
-        }
-        if (getAirportCode(b.from) === curOrigCode && getAirportCode(b.to) === curDestCode) {
-          if (b.seat) {
-            seats.push(...b.seat.split(",").map((s) => s.trim()));
-          }
-        } else if (!b.legs && b.seat && b.outboundFlightNo === flightNo) {
+
+        // Check outbound
+        const outOrig = getAirportCode(b.from);
+        const outDest = getAirportCode(b.to);
+        const outFlightMatch = !flightNo || !b.outboundFlightNo || b.outboundFlightNo === flightNo;
+        const outRouteMatch = outOrig === curOrigCode && outDest === curDestCode;
+        const outDateMatch = !curDepartDate || !b.departDate || b.departDate === curDepartDate;
+
+        if (outFlightMatch && outRouteMatch && outDateMatch && b.seat) {
           seats.push(...b.seat.split(",").map((s) => s.trim()));
         }
+
+        // Check inbound (for round trips)
+        if (b.tripType === "round") {
+          const inOrig = getAirportCode(b.to);
+          const inDest = getAirportCode(b.from);
+          const inFlightMatch = !flightNo || !b.inboundFlightNo || b.inboundFlightNo === flightNo;
+          const inRouteMatch = inOrig === curOrigCode && inDest === curDestCode;
+          const inDateMatch = !curDepartDate || !b.returnDate || b.returnDate === curDepartDate;
+
+          if (inFlightMatch && inRouteMatch && inDateMatch) {
+            const rSeat = b.returnSeat || (!b.outboundFlightNo && b.seat ? b.seat : "");
+            if (rSeat) {
+              seats.push(...rSeat.split(",").map((s) => s.trim()));
+            }
+          }
+        }
+
         return seats.filter(Boolean);
       });
 
@@ -3999,9 +3994,7 @@ function SeatMapModal({
     const isBusiness = isSeatBusiness(seatId);
     if (isBusiness && bookingClass === "economy") {
       toast.error(
-        language === "th"
-          ? `ที่นั่ง ${seatId} เป็นชั้นธุรกิจ (Business Class) สำหรับผู้โดยสารตั๋วชั้นธุรกิจเท่านั้น`
-          : `Seat ${seatId} is Business Class, reserved for Business Class tickets only.`
+        t("flight.err_seat_business_only").replace("{seatId}", seatId)
       );
       return;
     }
@@ -4078,8 +4071,8 @@ function SeatMapModal({
           isOccupied
             ? `${seatId} (${t('flight.seat_occupied')})`
             : isRestricted
-            ? `${seatId} (${language === "th" ? "ชั้นธุรกิจ - เฉพาะตั๋ว Business" : "Business Class - Business ticket only"})`
-            : `${seatId} (${isBusiness ? (language === "th" ? "ชั้นธุรกิจ" : "Business Class") : (language === "th" ? "ชั้นประหยัด" : "Economy Class")})`
+            ? `${seatId} (${t("flight.seat_business_only_label")})`
+            : `${seatId} (${isBusiness ? t("flight.cabin_business") : t("flight.cabin_economy")})`
         }
       >
         {seatId}
@@ -4234,13 +4227,13 @@ function SeatMapModal({
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 min-w-[10px] min-h-[10px] max-w-[10px] max-h-[10px] sm:min-w-[12px] sm:min-h-[12px] sm:max-w-[12px] sm:max-h-[12px] rounded-full bg-sky-100 dark:bg-sky-950/80 border border-sky-400 dark:border-sky-600 shrink-0 block"></span>
               <span className="text-sky-800 dark:text-sky-300 font-bold text-[10px] sm:text-[11px] whitespace-nowrap">
-                {language === "th" ? "ชั้นธุรกิจ (Business)" : "Business"}
+                {t("flight.cabin_business")}
               </span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
               <span className="w-2.5 h-2.5 sm:w-3 sm:h-3 min-w-[10px] min-h-[10px] max-w-[10px] max-h-[10px] sm:min-w-[12px] sm:min-h-[12px] sm:max-w-[12px] sm:max-h-[12px] rounded-full bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 shrink-0 block"></span>
               <span className="text-slate-700 dark:text-slate-300 font-medium text-[10px] sm:text-[11px] whitespace-nowrap">
-                {language === "th" ? "ชั้นประหยัด (Economy)" : "Economy"}
+                {t("flight.cabin_economy")}
               </span>
             </div>
             <div className="flex items-center gap-1.5 shrink-0">
@@ -4342,9 +4335,10 @@ function SeatMapModal({
                   </span>
                 ) : (
                   <span>
-                    {language === 'th'
-                      ? `${legs.length > 1 ? `${currentLeg.label}: ` : ""}เลือกแล้ว ${currentSeats.join(", ")} (กรุณาเลือกเพิ่มอีก ${remainingSeats} ที่นั่ง)`
-                      : `${legs.length > 1 ? `${currentLeg.label}: ` : ""}Selected: ${currentSeats.join(", ")} (Please select ${remainingSeats} more)`}
+                    {legs.length > 1 ? `${currentLeg.label}: ` : ""}
+                    {t('flight.selected_seats_more_needed')
+                      .replace('{seats}', currentSeats.join(", "))
+                      .replace('{more}', String(remainingSeats))}
                   </span>
                 )}
               </div>
@@ -4363,7 +4357,9 @@ function SeatMapModal({
                   onClick={() => setActiveModalLeg(activeModalLeg + 1)}
                   className="flex-1 py-2.5 sm:py-3.5 font-display font-bold text-xs rounded-xl sm:rounded-2xl border border-sky-300 dark:border-sky-700 bg-sky-50 dark:bg-slate-800 text-sky-900 dark:text-sky-200 hover:bg-sky-100 dark:hover:bg-slate-750 transition-all cursor-pointer shadow-xs active:scale-98"
                 >
-                  {language === 'th' ? `เที่ยวบินถัดไป (${activeModalLeg + 2}/${legs.length}) →` : `Next Flight (${activeModalLeg + 2}/${legs.length}) →`}
+                  {t('flight.next_flight_leg')
+                    .replace('{current}', String(activeModalLeg + 2))
+                    .replace('{total}', String(legs.length))}
                 </button>
               )}
 
@@ -4381,11 +4377,11 @@ function SeatMapModal({
               >
                 {legs.length > 1
                   ? (allLegsComplete
-                      ? (language === 'th' ? "ยืนยันที่นั่งครบทุกเที่ยวบิน ✓" : "Confirm All Flight Seats ✓")
-                      : (language === 'th' ? `บันทึกที่นั่ง (${currentSeats.length}/${maxSeats})` : `Save Seats (${currentSeats.length}/${maxSeats})`))
-                  : (language === 'th'
-                      ? `ยืนยันที่นั่ง (${currentSeats.length}/${maxSeats})`
-                      : `Confirm Seats (${currentSeats.length}/${maxSeats})`)}
+                      ? t('flight.confirm_all_legs_seats')
+                      : t('flight.save_seats_partial')
+                          .replace('{current}', String(currentSeats.length))
+                          .replace('{total}', String(maxSeats)))
+                  : `${t('flight.seat_confirm')} (${currentSeats.length}/${maxSeats})`}
               </button>
             </div>
           </div>

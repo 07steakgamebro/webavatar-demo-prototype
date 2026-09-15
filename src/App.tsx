@@ -21,7 +21,7 @@ import OrderAdmin from './pages/OrderAdmin';
 import ITStoreDemo from './pages/ITStoreDemo';
 import ITStoreAdmin from './pages/ITStoreAdmin';
 import NiaSite2026 from './pages/NiaSite2026';
-import TechsauceEvent from './pages/TechsauceEvent';
+import TechsauceEvent from './pages/Event';
 import { pagesConfig } from './config/pages';
 import './App.css';
 
