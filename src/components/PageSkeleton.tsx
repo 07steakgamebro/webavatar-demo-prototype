@@ -2,7 +2,7 @@ import { motion } from 'framer-motion';
 import type { CSSProperties } from 'react';
 
 interface PageSkeletonProps {
-  variant: 'flight' | 'order';
+  variant?: 'flight' | 'order';
 }
 
 const shimmer = {
@@ -20,7 +20,7 @@ function SkeletonBlock({ className, style }: SkeletonBlockProps) {
 }
 
 /** Full-page wireframe skeleton shown while demo page content loads */
-export default function PageSkeleton({ variant }: PageSkeletonProps) {
+export default function PageSkeleton({ variant = 'flight' }: PageSkeletonProps) {
   return (
     <motion.div
       className="skeleton-page"
