@@ -14,4 +14,21 @@ export default defineConfig({
   server: {
     allowedHosts: ['dramatize-levers-preset.ngrok-free.dev'],
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.includes('node_modules/framer-motion')) {
+            return 'vendor-framer';
+          }
+          if (id.includes('node_modules/lucide-react')) {
+            return 'vendor-lucide';
+          }
+          if (id.includes('node_modules/@radix-ui')) {
+            return 'vendor-radix';
+          }
+        },
+      },
+    },
+  },
 })

@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import type { ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import { LanguageProvider, useTranslation } from './lib/LanguageContext';
@@ -8,27 +8,27 @@ import AppNavbar from './components/AppNavbar';
 import PersistentBackground from './components/PersistentBackground';
 import SpaNavListener from './components/SpaNavListener';
 import GlobalPageCurtain from './components/motion-ui/GlobalPageCurtain';
-import Home from './pages/Home';
-import About from './pages/About';
-
-import Contact from './pages/Contact';
-import AISales from './pages/AISales';
-import FlightDemo from './pages/FlightDemo';
-import FlightAdmin from './pages/FlightAdmin';
-import OrderDemo from './pages/OrderDemo';
-import FoodOrderDemo from './pages/FoodOrderDemo';
-import OrderAdmin from './pages/OrderAdmin';
-import ITStoreDemo from './pages/ITStoreDemo';
-import ITStoreAdmin from './pages/ITStoreAdmin';
-import NiaSite2026 from './pages/NiaSite2026';
-import TechsauceEvent from './pages/Event';
+import PageSkeleton from './components/PageSkeleton';
 import { pagesConfig } from './config/pages';
 import './App.css';
+
+const Home = lazy(() => import('./pages/Home'));
+const About = lazy(() => import('./pages/About'));
+const Contact = lazy(() => import('./pages/Contact'));
+const AISales = lazy(() => import('./pages/AISales'));
+const FlightDemo = lazy(() => import('./pages/FlightDemo'));
+const FlightAdmin = lazy(() => import('./pages/FlightAdmin'));
+const OrderDemo = lazy(() => import('./pages/OrderDemo'));
+const FoodOrderDemo = lazy(() => import('./pages/FoodOrderDemo'));
+const OrderAdmin = lazy(() => import('./pages/OrderAdmin'));
+const ITStoreDemo = lazy(() => import('./pages/ITStoreDemo'));
+const ITStoreAdmin = lazy(() => import('./pages/ITStoreAdmin'));
+const NiaSite2026 = lazy(() => import('./pages/NiaSite2026'));
+const TechsauceEvent = lazy(() => import('./pages/Event'));
 
 const pageComponents: Record<string, ReactNode> = {
   '/': <Home />,
   '/about': <About />,
-
   '/contact': <Contact />,
   '/ai-sales': <AISales />,
   '/flight-demo': <FlightDemo />,
@@ -135,20 +135,22 @@ function AppRoutes() {
       <GlobalPageCurtain phase={phase} curtainTitle={curtainTitle} />
 
       <main className="main-content">
-        <Routes location={displayLocation}>
-          {/* Static admin/support routes */}
-          <Route path="/flight-demo/admin" element={<FlightAdmin />} />
-          <Route path="/food-demo" element={<FoodOrderDemo />} />
-          <Route path="/food-demo/admin" element={<OrderAdmin />} />
-          <Route path="/it-store-demo/admin" element={<ITStoreAdmin />} />
+        <Suspense fallback={<PageSkeleton />}>
+          <Routes location={displayLocation}>
+            {/* Static admin/support routes */}
+            <Route path="/flight-demo/admin" element={<FlightAdmin />} />
+            <Route path="/food-demo" element={<FoodOrderDemo />} />
+            <Route path="/food-demo/admin" element={<OrderAdmin />} />
+            <Route path="/it-store-demo/admin" element={<ITStoreAdmin />} />
 
-          {/* Dynamic pages based on pagesConfig */}
-          {pagesConfig.map((page) =>
-            page.enabled && pageComponents[page.path] ? (
-              <Route key={page.path} path={page.path} element={pageComponents[page.path]} />
-            ) : null
-          )}
-        </Routes>
+            {/* Dynamic pages based on pagesConfig */}
+            {pagesConfig.map((page) =>
+              page.enabled && pageComponents[page.path] ? (
+                <Route key={page.path} path={page.path} element={pageComponents[page.path]} />
+              ) : null
+            )}
+          </Routes>
+        </Suspense>
       </main>
     </>
   );
