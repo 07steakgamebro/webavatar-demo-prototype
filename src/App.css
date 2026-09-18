@@ -1381,4 +1381,202 @@
   text-shadow: none;
 }
 
+/* ════════════════════════════════════════════════════════════════════
+   WEBAVATAR RESPONSIVE MOBILE & TABLET ADAPTATION
+   Fixes the floating 3D avatar covering the screen on mobile devices
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. Tablet Viewport (769px - 1024px) ── */
+@media (max-width: 1024px) and (min-width: 769px) {
+  #avatar-widget-container.bcw-rt-avatar-widget:not(.bcw-rt-has-parent) {
+    width: 250px !important;
+    height: 350px !important;
+    left: calc(100dvw - 250px - 16px) !important;
+    top: calc(100dvh - 350px - 16px) !important;
+    bottom: 16px !important;
+    right: 16px !important;
+  }
+
+  .bcw-rt-avatar-widget #bcw-rt-bubble-container {
+    width: min(290px, 80vw) !important;
+    bottom: calc(100% + 10px) !important;
+  }
+
+  .bcw-rt-avatar-widget .bcw-rt-bubble {
+    padding: 12px 20px !important;
+    font-size: 14px !important;
+    border-radius: 20px !important;
+  }
+}
+
+/* ── 2. Mobile Viewport (<= 768px) ── */
+@media (max-width: 768px) {
+  :root {
+    --wa-mobile-w: clamp(140px, 36vw, 175px);
+    --wa-mobile-h: clamp(195px, 50vw, 245px);
+  }
+
+  /* Compact Avatar floating in bottom-right corner */
+  #avatar-widget-container.bcw-rt-avatar-widget:not(.bcw-rt-has-parent) {
+    width: var(--wa-mobile-w) !important;
+    height: var(--wa-mobile-h) !important;
+    left: calc(100dvw - var(--wa-mobile-w) - 12px) !important;
+    top: calc(100dvh - var(--wa-mobile-h) - 12px) !important;
+    bottom: 12px !important;
+    right: 12px !important;
+    border-radius: 18px !important;
+    pointer-events: none !important;
+    overflow: visible !important;
+  }
+
+  #avatar-widget-container.bcw-rt-avatar-widget canvas {
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 18px !important;
+    pointer-events: auto !important;
+  }
+
+  /* Mobile Controls button stack */
+  #bcw-rt-controls:not(.bcw-rt-has-parent) {
+    bottom: 12px !important;
+    right: 12px !important;
+    gap: 8px !important;
+    z-index: 2147483645 !important;
+    pointer-events: auto !important;
+  }
+
+  #bcw-rt-call-btn-wrap {
+    width: 50px !important;
+    height: 50px !important;
+  }
+
+  #bcw-rt-call-btn {
+    width: 50px !important;
+    height: 50px !important;
+  }
+
+  #bcw-rt-call-btn svg,
+  #bcw-rt-call-btn img {
+    width: 24px !important;
+    height: 24px !important;
+  }
+
+  /* Compact User Credit Pill */
+  #bcw-rt-credit-wrap {
+    max-width: calc(100vw - 24px) !important;
+    transform: translateX(-50%) scale(0.88) !important;
+    transform-origin: center top !important;
+    top: calc(100% + 2px) !important;
+  }
+
+  /* Compact Speech Bubble above avatar */
+  #bcw-rt-bubble-container,
+  .bcw-rt-avatar-widget #bcw-rt-bubble-container {
+    width: min(260px, calc(100vw - 28px)) !important;
+    bottom: calc(100% + 8px) !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    pointer-events: none !important;
+  }
+
+  .bcw-rt-bubble {
+    padding: 8px 14px !important;
+    font-size: 13px !important;
+    line-height: 1.4 !important;
+    border-radius: 16px !important;
+    border-width: 2px !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.22) !important;
+  }
+
+  /* Countdown pill on mobile */
+  #realtime-countdown-pill {
+    padding: 6px 14px !important;
+    font-size: 12px !important;
+    border-radius: 20px !important;
+  }
+
+  /* Fallback Chat / Panel Mode */
+  #botnoi-chat-widget {
+    bottom: 12px !important;
+    right: 12px !important;
+  }
+
+  #bcw-panel {
+    width: calc(100vw - 24px) !important;
+    max-width: 360px !important;
+    height: min(520px, calc(100dvh - 70px)) !important;
+    max-height: calc(100dvh - 70px) !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    border-radius: 16px !important;
+  }
+
+  #bcw-fab {
+    width: 52px !important;
+    height: 52px !important;
+  }
+
+  /* Compact camera dpad controls & hide resize handles on touch */
+  .avatar-camera-zoom-panel,
+  .avatar-camera-dir-panel {
+    bottom: 4px !important;
+    gap: 2px !important;
+  }
+  .avatar-camera-zoom-panel {
+    left: 4px !important;
+  }
+  .avatar-camera-dir-panel {
+    right: 4px !important;
+  }
+  .dpad-btn {
+    width: 20px !important;
+    height: 20px !important;
+    font-size: 0.7rem !important;
+  }
+  .avatar-resize-handle {
+    display: none !important;
+  }
+}
+
+/* ── 3. Extra Small Mobile Devices (<= 390px) ── */
+@media (max-width: 390px) {
+  :root {
+    --wa-mobile-w: 135px;
+    --wa-mobile-h: 190px;
+  }
+
+  #avatar-widget-container.bcw-rt-avatar-widget:not(.bcw-rt-has-parent) {
+    width: 135px !important;
+    height: 190px !important;
+    left: calc(100dvw - 135px - 8px) !important;
+    top: calc(100dvh - 190px - 8px) !important;
+    bottom: 8px !important;
+    right: 8px !important;
+    border-radius: 14px !important;
+  }
+
+  #bcw-rt-controls:not(.bcw-rt-has-parent) {
+    bottom: 8px !important;
+    right: 8px !important;
+    gap: 6px !important;
+  }
+
+  #bcw-rt-call-btn-wrap,
+  #bcw-rt-call-btn {
+    width: 44px !important;
+    height: 44px !important;
+  }
+
+  .bcw-rt-avatar-widget #bcw-rt-bubble-container {
+    width: calc(100vw - 20px) !important;
+  }
+
+  .bcw-rt-bubble {
+    padding: 6px 12px !important;
+    font-size: 12px !important;
+    border-radius: 14px !important;
+  }
+}
+
+
 

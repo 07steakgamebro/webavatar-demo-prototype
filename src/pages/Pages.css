@@ -264,6 +264,31 @@
   100% { transform: scale(1.4); opacity: 0; }
 }
 
+@media (max-width: 768px) {
+  .avatar-preview-box {
+    padding: 1.25rem 1rem;
+    min-height: 200px;
+  }
+  .avatar-visual-wrapper {
+    width: 160px;
+    height: 160px;
+    margin-bottom: 0.75rem;
+  }
+  .avatar-pulsing-circle {
+    width: 90px;
+    height: 90px;
+  }
+  .avatar-wave {
+    width: 120px;
+    height: 120px;
+  }
+  .avatar-wave-2 {
+    width: 145px;
+    height: 145px;
+  }
+}
+
+
 /* Showcase Grid */
 .showcase-grid {
   display: grid;
