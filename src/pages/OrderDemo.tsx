@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useTranslation, type TranslationKey } from "@/lib/LanguageContext";
@@ -16,8 +16,8 @@ import {
   Wrench,
   Coffee,
   Dumbbell,
-  Clock,
   Users,
+  Volume2,
   RotateCcw,
   SlidersHorizontal,
   X,
@@ -38,6 +38,7 @@ import botnoiRestaurantLogo from "../assets/IT.png";
 import promoPhuket from "../assets/hotel.png";
 import padKrapaoImage from "../assets/Restaurant.png";
 import AppFooter from "../components/AppFooter";
+import { speakWebAvatarMessage } from "../lib/webavatarService";
 
 export type ProjectCategory = 
   | "coffee"
@@ -73,6 +74,7 @@ export interface HouseItem {
   progress: number;
   deployedUrl: string;
   githubUrl: string;
+  isReady?: boolean;
 }
 
 // Receipt & MenuItem Interfaces for Admin portal compatibility
@@ -98,27 +100,35 @@ export interface Receipt {
 
 // 20 Houses Mock Database mapped to Project Types and URLs
 const projectData: HouseItem[] = [
-  { id: -1, code: 'SANDBOX', name: 'Flight Booking', teamName: 'Botnoi Air Team', style: 'Interactive Sandbox', type: 'travel', color: '#0284c7', progress: 100, deployedUrl: '/flight-demo', githubUrl: '' },
-  { id: -2, code: 'SANDBOX', name: 'IT Store E-Commerce', teamName: 'Botnoi IT Team', style: 'Interactive Sandbox', type: 'ecommerce', color: '#0284c7', progress: 100, deployedUrl: '/it-store-demo', githubUrl: '' },
-  { id: -3, code: 'SANDBOX', name: 'Botnoi Restaurant', teamName: 'Botnoi Food Team', style: 'Interactive Sandbox', type: 'restaurant', color: '#0284c7', progress: 100, deployedUrl: '/food-demo', githubUrl: '' },
-  { id: -4, code: 'SANDBOX', name: 'Botnoi Hotel', teamName: 'Botnoi Hotel Team', style: 'Interactive Sandbox', type: 'accommodation', color: '#0284c7', progress: 100, deployedUrl: 'https://botnoi-hotel-two.vercel.app/', githubUrl: 'https://github.com/botnoi-demos/hotel-resort-sandbox' },
-  { id: 1, code: 'TN01, TN07', name: 'LearnLab', teamName: ['The-chill-crew', 'steak-game-bros'], style: 'Modern Minimalist', type: 'education', color: '#0284c7', progress: 85, deployedUrl: 'https://ai-learn-hub-22.lovable.app/', githubUrl: 'https://github.com/Icetea0000000000025/ai-learn-hub-22.git  ' },
+  { id: -1, code: 'SANDBOX', name: 'Flight Booking', teamName: 'Botnoi Air Team', style: 'Interactive Sandbox', type: 'travel', color: '#0284c7', progress: 100, deployedUrl: '/flight-demo', githubUrl: '', isReady: true },
+  { id: -2, code: 'SANDBOX', name: 'IT Store E-Commerce', teamName: 'Botnoi IT Team', style: 'Interactive Sandbox', type: 'ecommerce', color: '#0284c7', progress: 100, deployedUrl: '/it-store-demo', githubUrl: '', isReady: true },
+  { id: -3, code: 'SANDBOX', name: 'Botnoi Restaurant', teamName: 'Botnoi Food Team', style: 'Interactive Sandbox', type: 'restaurant', color: '#0284c7', progress: 100, deployedUrl: '/food-demo', githubUrl: '', isReady: true },
+  { id: -4, code: 'SANDBOX', name: 'Botnoi Hotel', teamName: 'Botnoi Hotel Team', style: 'Interactive Sandbox', type: 'accommodation', color: '#0284c7', progress: 100, deployedUrl: 'https://botnoi-hotel-two.vercel.app/', githubUrl: 'https://github.com/botnoi-demos/hotel-resort-sandbox', isReady: true },
+  { id: 1, code: 'TN01, TN07', name: 'LearnLab', teamName: ['The-chill-crew', 'steak-game-bros'], style: 'Modern Minimalist', type: 'education', color: '#0284c7', progress: 85, deployedUrl: 'https://ai-learn-hub-22.lovable.app/', githubUrl: 'https://github.com/Icetea0000000000025/ai-learn-hub-22.git  ', isReady: true },
   //{ id: 2, code: 'TN02', name: '', teamName: 'Team 02', style: 'Neo-Classical', type: 'travel', color: '#0284c7', progress: 45, deployedUrl: 'https://example.com', githubUrl: 'https://github.com' },
-  { id: 3, code: 'TN03', name: 'Skinbot', teamName: 'Controller-kings', style: 'Nordic Timber', type: 'skincare', color: '#0284c7', progress: 90, deployedUrl: 'https://eucerin-mu.vercel.app/', githubUrl: 'https://github.com' },
-  { id: 4, code: 'TN04', name: 'AI Trip Map Planner', teamName: 'The-netflix-hermits', style: 'Brutalist Concrete', type: 'travel', color: '#0284c7', progress: 10, deployedUrl: 'https://trip-planner-botnoi.vercel.app/', githubUrl: 'https://github.com' },
-  { id: 5, code: 'TN05', name: 'Demo Health', teamName: 'Aesthetic-dreamers', style: 'Cozy Wood Cabin', type: 'hospital', color: '#0284c7', progress: 100, deployedUrl: 'https://hospital-demo-kohl.vercel.app/', githubUrl: 'https://github.com' },
-  { id: 6, code: 'TN06', name: 'Botnoi API', teamName: 'lo-fi-homebodies', style: 'Glass Contemporary', type: 'ai', color: '#0284c7', progress: 60, deployedUrl: 'https://digital-friendly-companion.lovable.app/', githubUrl: 'https://github.com' },
-  { id: 7, code: 'TN07', name: 'DineOS', teamName: 'steak-game-bros', style: 'Organic Earth Dome', type: 'restaurant', color: '#0284c7', progress: 80, deployedUrl: 'https://dineosdemo.vercel.app/', githubUrl: 'https://github.com/ran-lung-get/ran-lung-get-demo' },
-  { id: 8, code: 'TN08, TN19', name: 'Chevi Shop', teamName: ['Vibe-architects', 'ocean-avengers'], style: 'Industrial Brickwork', type: 'ecommerce', color: '#0284c7', progress: 75, deployedUrl: 'https://chevi-shop.netlify.app/', githubUrl: 'https://github.com' },
-  { id: 9, code: 'TN09', name: 'Botnoi Live Translate', teamName: 'Sunset-superfans', style: 'Japanese Zen', type: 'ai', color: '#0284c7', progress: 100, deployedUrl: 'https://botnoi-live-speak.base44.app/', githubUrl: 'https://github.com' },
-  { id: 10, code: 'TN10', name: 'CoolCare Pro', teamName: 'lazy-mermaids', style: 'Modular Container', type: 'home_service', color: '#0284c7', progress: 30, deployedUrl: 'https://b-grim.vercel.app/', githubUrl: 'https://github.com' },
-  { id: 11, code: 'TN11', name: 'MediQ', teamName: 'The-sharp-cuts', style: 'Mid-Century Gable', type: 'hospital', color: '#0284c7', progress: 80, deployedUrl: 'https://mediq-demo.vercel.app/', githubUrl: 'https://github.com' },
-  { id: 12, code: 'TN12', name: 'HomiQ', teamName: 'Coastal-avengers', style: 'Tropical Canopy', type: 'real_estate', color: '#0284c7', progress: 95, deployedUrl: 'https://arex-platform.lovable.app/', githubUrl: 'https://github.com' },
-  //{ id: 13, code: 'TN13', name: '', teamName: 'Team 13', style: 'Step Architecture', type: 'accommodation', color: '#0284c7', progress: 55, deployedUrl: 'https://example.com', githubUrl: 'https://github.com' },
-  { id: 14, code: 'TN14', name: 'BrewAI', teamName: 'The-dungeon-masters', style: 'Atrium Courtyard', type: 'coffee', color: '#0284c7', progress: 100, deployedUrl: 'https://botnoi-brewai-production.up.railway.app/', githubUrl: 'https://github.com' },
-  { id: 15, code: 'TN15', name: 'Glow Med Spa', teamName: 'Mountain-mode', style: 'Flat-Roof Minimal', type: 'hospital', color: '#0284c7', progress: 15, deployedUrl: 'https://medspa-booking-buddy.lovable.app/', githubUrl: 'https://github.com' },
-  { id: 16, code: 'TN16', name: 'Fitder', teamName: 'Blue-hour-society', style: 'Modern Steel Frame', type: 'education', color: '#0284c7', progress: 70, deployedUrl: 'https://fitder-ai.vercel.app/', githubUrl: 'https://github.com' },
-  { id: 17, code: 'TN17', name: 'AI Commerce Agent', teamName: 'Midnight-raiders', style: 'Spanish Terracotta', type: 'ai', color: '#0284c7', progress: 80, deployedUrl: 'https://ai-e-commerce-brown.vercel.app/', githubUrl: 'https://github.com' },
+  // [IN DEVELOPMENT - DISABLED] Web / API endpoint: https://eucerin-mu.vercel.app/
+  { id: 3, code: 'TN03', name: 'Skinbot', teamName: 'Controller-kings', style: 'Nordic Timber', type: 'skincare', color: '#0284c7', progress: 90, deployedUrl: '', githubUrl: 'https://github.com', isReady: false },
+  { id: 4, code: 'TN04', name: 'AI Trip Map Planner', teamName: 'The-netflix-hermits', style: 'Brutalist Concrete', type: 'travel', color: '#0284c7', progress: 10, deployedUrl: 'https://trip-planner-botnoi.vercel.app/', githubUrl: 'https://github.com', isReady: true },
+  { id: 5, code: 'TN05', name: 'Demo Health', teamName: 'Aesthetic-dreamers', style: 'Cozy Wood Cabin', type: 'hospital', color: '#0284c7', progress: 100, deployedUrl: 'https://hospital-demo-kohl.vercel.app/', githubUrl: 'https://github.com', isReady: true },
+  // [IN DEVELOPMENT - DISABLED] Web / API endpoint: https://digital-friendly-companion.lovable.app/
+  { id: 6, code: 'TN06', name: 'Botnoi API', teamName: 'lo-fi-homebodies', style: 'Glass Contemporary', type: 'ai', color: '#0284c7', progress: 60, deployedUrl: '', githubUrl: 'https://github.com', isReady: false },
+  { id: 7, code: 'TN07', name: 'DineOS', teamName: 'steak-game-bros', style: 'Organic Earth Dome', type: 'restaurant', color: '#0284c7', progress: 80, deployedUrl: 'https://ranlunggetdemo.vercel.app/', githubUrl: 'https://github.com/ran-lung-get/ran-lung-get-demo', isReady: true },
+  { id: 8, code: 'TN08, TN19', name: 'Chevi Shop', teamName: ['Vibe-architects', 'ocean-avengers'], style: 'Industrial Brickwork', type: 'ecommerce', color: '#0284c7', progress: 75, deployedUrl: 'https://chevi-shop.netlify.app/', githubUrl: 'https://github.com', isReady: true },
+  // [IN DEVELOPMENT - DISABLED] Web / API endpoint: https://botnoi-live-speak.base44.app/
+  { id: 9, code: 'TN09', name: 'Botnoi Live Translate', teamName: 'Sunset-superfans', style: 'Japanese Zen', type: 'ai', color: '#0284c7', progress: 100, deployedUrl: '', githubUrl: 'https://github.com', isReady: false },
+  { id: 10, code: 'TN10', name: 'CoolCare Pro', teamName: 'lazy-mermaids', style: 'Modular Container', type: 'home_service', color: '#0284c7', progress: 30, deployedUrl: 'https://b-grim.vercel.app/', githubUrl: 'https://github.com', isReady: true },
+  // [IN DEVELOPMENT - DISABLED] Web / API endpoint: https://mediq-demo.vercel.app/
+  { id: 11, code: 'TN11', name: 'MediQ', teamName: 'The-sharp-cuts', style: 'Mid-Century Gable', type: 'hospital', color: '#0284c7', progress: 80, deployedUrl: '', githubUrl: 'https://github.com', isReady: false },
+  // [IN DEVELOPMENT - DISABLED] Web / API endpoint: https://arex-platform.lovable.app/
+  { id: 12, code: 'TN12', name: 'HomiQ', teamName: 'Coastal-avengers', style: 'Tropical Canopy', type: 'real_estate', color: '#0284c7', progress: 95, deployedUrl: '', githubUrl: 'https://github.com', isReady: false },
+  // [IN DEVELOPMENT - DISABLED] Web / API endpoint: https://botnoi-brewai-production.up.railway.app/
+  { id: 14, code: 'TN14', name: 'BrewAI', teamName: 'The-dungeon-masters', style: 'Atrium Courtyard', type: 'coffee', color: '#0284c7', progress: 100, deployedUrl: '', githubUrl: 'https://github.com', isReady: false },
+  // [IN DEVELOPMENT - DISABLED] Web / API endpoint: https://medspa-booking-buddy.lovable.app/
+  { id: 15, code: 'TN15', name: 'Glow Med Spa', teamName: 'Mountain-mode', style: 'Flat-Roof Minimal', type: 'hospital', color: '#0284c7', progress: 15, deployedUrl: '', githubUrl: 'https://github.com', isReady: false },
+  // [IN DEVELOPMENT - DISABLED] Web / API endpoint: https://fitder-ai.vercel.app/
+  { id: 16, code: 'TN16', name: 'Fitder', teamName: 'Blue-hour-society', style: 'Modern Steel Frame', type: 'education', color: '#0284c7', progress: 70, deployedUrl: '', githubUrl: 'https://github.com', isReady: false },
+  // [IN DEVELOPMENT - DISABLED] Web / API endpoint: https://ai-e-commerce-brown.vercel.app/
+  { id: 17, code: 'TN17', name: 'AI Commerce Agent', teamName: 'Midnight-raiders', style: 'Spanish Terracotta', type: 'ai', color: '#0284c7', progress: 80, deployedUrl: '', githubUrl: 'https://github.com', isReady: false },
   //{ id: 18, code: 'TN18', name: '18-indie-mountain-kids', teamName: 'Team 18', style: 'Parametric Fluid', type: 'travel', color: '#0284c7', progress: 0, deployedUrl: 'https://example.com', githubUrl: 'https://github.com' },
   //{ id: 19, code: 'TN19', name: '19-ocean-avengers', teamName: 'Team 19', style: 'Victorian Restoration', type: 'ecommerce', color: '#0284c7', progress: 100, deployedUrl: '', githubUrl: 'https://github.com' },
   //{ id: 20, code: 'TN20', name: '', teamName: 'Team 20', style: 'Waterfront Living', type: 'ecommerce', color: '#0284c7', progress: 40, deployedUrl: 'https://example.com', githubUrl: 'https://github.com' }
@@ -374,6 +384,7 @@ const CATEGORY_COLOR_MAP: Record<
 
 function isHouseDeployed(house: HouseItem): boolean {
   return Boolean(
+    house.isReady &&
     house.deployedUrl &&
     house.deployedUrl.trim() !== "" &&
     house.deployedUrl.trim() !== "https://example.com",
@@ -381,8 +392,9 @@ function isHouseDeployed(house: HouseItem): boolean {
 }
 
 // ─── Shared card renderer ─────────────────────────────────────────────────────
-function DemoCard({ house, t }: { house: HouseItem; t: (key: any) => string }) {
-  const hasDeployed = isHouseDeployed(house);
+function DemoCard({ house, t, language = 'th' }: { house: HouseItem; t: (key: any) => string; language?: string }) {
+  const isAvailable = Boolean(house.isReady && isHouseDeployed(house));
+  const [isSpeakingAlert, setIsSpeakingAlert] = useState(false);
   let typeLabel: string;
   let typeBg = "bg-stone-50 text-stone-600 border-stone-200 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700";
   let cardDescription = "";
@@ -420,17 +432,12 @@ function DemoCard({ house, t }: { house: HouseItem; t: (key: any) => string }) {
       cardDescription = t(`showcase.desc_${house.type}` as any);
     }
 
-    if (!hasDeployed) {
-      typeLabel = t("showcase.type_pending");
-      typeBg = "bg-stone-50 text-stone-500 border-stone-200/50 dark:bg-slate-800/80 dark:text-slate-300 dark:border-slate-700";
-    } else {
-      const typeKey = getTNTypeKey(house.code);
-      typeLabel = typeKey
-        ? t(typeKey as any)
-        : t(`showcase.type_${house.type}` as any);
-      if (CATEGORY_STYLES[house.type]) {
-        typeBg = CATEGORY_STYLES[house.type].bg;
-      }
+    const typeKey = getTNTypeKey(house.code);
+    typeLabel = typeKey
+      ? t(typeKey as any)
+      : t(`showcase.type_${house.type}` as any);
+    if (CATEGORY_STYLES[house.type]) {
+      typeBg = CATEGORY_STYLES[house.type].bg;
     }
   }
 
@@ -474,23 +481,102 @@ function DemoCard({ house, t }: { house: HouseItem; t: (key: any) => string }) {
 
   const previewImg = getLocalAssetForHouse(house.code) || DEMO_PREVIEW_IMAGES[String(house.id)] || DEMO_PREVIEW_IMAGES[house.code] || "https://images.unsplash.com/photo-1557804506-669a67965ba0?w=600&q=80&auto=format&fit=crop";
 
+  const triggerAvatarAttempt = useCallback(() => {
+    const langCode =
+      language === 'th' ? 'th-TH' :
+      language === 'ja' ? 'ja-JP' :
+      language === 'zh' ? 'zh-CN' :
+      language === 'ko' ? 'ko-KR' :
+      language === 'es' ? 'es-ES' :
+      language === 'fr' ? 'fr-FR' : 'en-US';
+
+    const speechText = t('showcase.in_development_speech' as any) ||
+      'เดโมนี้ยังไม่สามารถเข้าใช้งานได้ค่ะ ตอนนี้กำลังอยู่ในช่วงการพัฒนา';
+
+    speakWebAvatarMessage(speechText, langCode);
+
+    // Visual feedback pulse on the card
+    setIsSpeakingAlert(true);
+    setTimeout(() => setIsSpeakingAlert(false), 3500);
+  }, [language, t]);
+
   const cardInnerContent = (
     <motion.article
       key={house.id}
       id={cardId}
-      aria-label={`${house.code}: ${displayName}`}
-      className="playing-card relative bg-card border-2 border-border/80 dark:border-slate-800 rounded-[24px] shadow-md hover:shadow-2xl hover:border-sky-400/70 transition-all duration-300 flex flex-col justify-between group overflow-hidden cursor-pointer h-full"
-      style={{
-        boxShadow: "0 10px 25px -8px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04)",
+      role={!isAvailable ? "button" : undefined}
+      tabIndex={!isAvailable ? 0 : undefined}
+      aria-label={`${house.code}: ${displayName}${!isAvailable ? ` - ${t('showcase.not_ready_demos')}` : ''}`}
+      aria-disabled={!isAvailable}
+      data-testid={cardId}
+      data-available={isAvailable}
+      onClick={(e) => {
+        if (!isAvailable) {
+          e.preventDefault();
+          e.stopPropagation();
+
+          // Check if this click was triggered by WebAvatar (synthetic event / bridge / programmatic click)
+          const isFromAvatar =
+            !e.isTrusted ||
+            Boolean((e as any).fromAvatar) ||
+            Boolean((e.nativeEvent as any)?.fromAvatar) ||
+            Boolean((e.currentTarget as any)?.__fromAvatar);
+
+          if (isFromAvatar) {
+            triggerAvatarAttempt();
+          }
+          // Human click with mouse (e.isTrusted === true): behaves as before (disabled, cursor-not-allowed, cannot enter)
+        }
       }}
-      whileHover={{ y: 0, scale: 1.02, rotate: 0 }}
+      className={`playing-card relative bg-card border-2 rounded-[24px] shadow-md transition-all duration-300 flex flex-col justify-between group overflow-hidden h-full ${
+        !isAvailable
+          ? `border-border/60 opacity-80 cursor-not-allowed select-none grayscale-[20%] hover:border-neutral-500/60 dark:hover:border-neutral-600/70 hover:shadow-lg ${
+              isSpeakingAlert ? 'ring-2 ring-amber-400 ring-offset-2 dark:ring-offset-slate-900 border-amber-400' : ''
+            }`
+          : "border-border/80 dark:border-slate-800 hover:shadow-2xl hover:border-sky-400/70 cursor-pointer"
+      }`}
+      style={{
+        boxShadow: isAvailable
+          ? "0 10px 25px -8px rgba(0,0,0,0.08), 0 4px 6px -2px rgba(0,0,0,0.04)"
+          : isSpeakingAlert
+          ? "0 0 20px rgba(245, 158, 11, 0.35)"
+          : "none",
+      }}
+      whileHover={isAvailable ? { y: 0, scale: 1.02, rotate: 0 } : {}}
     >
+      {/* Subtle gray overlay over the entire card if in development */}
+      {!isAvailable && (
+        <div
+          className="absolute inset-0 z-30 bg-slate-900/10 dark:bg-slate-950/40 pointer-events-none rounded-[24px]"
+          aria-hidden="true"
+        />
+      )}
+
+      {/* Floating speech announcement notification banner when Avatar triggers announcement */}
+      {!isAvailable && isSpeakingAlert && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="absolute top-2 left-2 right-2 z-40 px-3 py-2 rounded-xl bg-amber-500/95 dark:bg-amber-600/95 text-slate-950 font-bold text-[11px] leading-tight flex items-center gap-2 shadow-xl backdrop-blur-md border border-amber-300/60 pointer-events-none"
+        >
+          <Volume2 className="size-4 shrink-0 text-slate-950 animate-bounce" />
+          <span className="flex-1 line-clamp-2">
+            {t('showcase.in_development_speech' as any)}
+          </span>
+        </motion.div>
+      )}
+
       {/* Top Demo Image Thumbnail Preview Box with Image-Only Hover Overlay */}
       <div className="relative w-full h-36 sm:h-40 overflow-hidden bg-slate-900 border-b border-border/60">
         <img
           src={previewImg}
           alt={displayName}
-          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 opacity-90 group-hover:opacity-100"
+          className={`w-full h-full object-cover transition-transform duration-500 ${
+            !isAvailable
+              ? "grayscale-[50%] opacity-70 group-hover:opacity-85"
+              : "opacity-90 group-hover:opacity-100 group-hover:scale-110"
+          }`}
           loading="lazy"
           onError={(e) => {
             (e.target as HTMLImageElement).src = "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=600&q=80&auto=format&fit=crop";
@@ -498,17 +584,25 @@ function DemoCard({ house, t }: { house: HouseItem; t: (key: any) => string }) {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-card via-card/15 to-black/35 pointer-events-none" />
 
+        {/* Top-Right In Development Badge (Monochrome: White/Black/Gray with no icon) */}
+        {!isAvailable && (
+          <div className="absolute top-2.5 right-2.5 z-20 px-2.5 py-1 rounded-full bg-neutral-900/85 dark:bg-black/90 backdrop-blur-md border border-neutral-700/80 dark:border-neutral-700 text-neutral-200 text-[10px] font-black tracking-wide uppercase shadow-md">
+            <span>{t('showcase.not_ready_demos')}</span>
+          </div>
+        )}
+
         {/* Hover Overlay Layer (Restricted ONLY to Image Preview Area) */}
-        <div className="absolute inset-0 z-20 bg-sky-600/45 dark:bg-sky-500/40 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none p-3 text-center">
-          {hasDeployed ? (
+        <div className={`absolute inset-0 z-20 backdrop-blur-[2px] flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none p-3 text-center ${
+          isAvailable ? "bg-sky-600/45 dark:bg-sky-500/40" : "bg-black/65 dark:bg-black/80"
+        }`}>
+          {isAvailable ? (
             <div className="px-3.5 py-1.5 rounded-xl bg-white text-sky-950 dark:bg-slate-900 dark:text-sky-300 font-black text-[11px] uppercase tracking-wider flex items-center gap-1.5 shadow-xl transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
               <span>{t('showcase.launch_demo')}</span>
               <ExternalLink className="size-3.5 shrink-0" />
             </div>
           ) : (
-            <div className="px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur-md border border-white/25 text-white text-[11px] font-extrabold tracking-wider uppercase flex items-center gap-1.5 shadow-lg">
-              <Clock className="size-3.5 shrink-0" />
-              <span>{t('showcase.status_pending')}</span>
+            <div className="px-3.5 py-1.5 rounded-xl bg-neutral-900/95 dark:bg-black/95 backdrop-blur-md border border-neutral-600/80 text-white text-[11px] font-black tracking-wider uppercase shadow-xl transform translate-y-2 group-hover:translate-y-0 transition-transform duration-300">
+              <span>{t('showcase.cannot_access' as any)}</span>
             </div>
           )}
         </div>
@@ -517,14 +611,18 @@ function DemoCard({ house, t }: { house: HouseItem; t: (key: any) => string }) {
       {/* Top Accent Strip below image */}
       <div
         className="h-1 opacity-90"
-        style={{ background: house.color || "var(--primary)" }}
+        style={{ background: !isAvailable ? "#64748b" : (house.color || "var(--primary)") }}
       />
 
       <div className="relative z-10 flex flex-col flex-1 justify-between p-4.5">
         <div>
           {/* Card Title */}
           <div className="mb-2">
-            <h3 className="text-base sm:text-[16px] font-black text-foreground group-hover:text-sky-500 dark:group-hover:text-sky-400 transition-colors tracking-tight leading-snug min-h-[2.4rem] flex items-center">
+            <h3 className={`text-base sm:text-[16px] font-black tracking-tight leading-snug min-h-[2.4rem] flex items-center transition-colors ${
+              isAvailable
+                ? "text-foreground group-hover:text-sky-500 dark:group-hover:text-sky-400"
+                : "text-foreground/90 group-hover:text-foreground dark:group-hover:text-white"
+            }`}>
               {displayName}
             </h3>
           </div>
@@ -557,6 +655,13 @@ function DemoCard({ house, t }: { house: HouseItem; t: (key: any) => string }) {
             <span className={`text-[9.5px] font-black tracking-wider uppercase px-2.5 py-0.5 rounded-full border shadow-2xs whitespace-nowrap ${typeBg}`}>
               {typeLabel}
             </span>
+
+            {/* In Development status tag in monochrome white/black/gray with no icon */}
+            {!isAvailable && (
+              <span className="text-[9.5px] font-bold font-mono bg-neutral-800/80 dark:bg-neutral-900/90 text-neutral-300 border border-neutral-700/80 px-2.5 py-0.5 rounded-full inline-flex items-center">
+                <span>{t('showcase.not_ready_demos')}</span>
+              </span>
+            )}
           </div>
         </div>
 
@@ -579,8 +684,18 @@ function DemoCard({ house, t }: { house: HouseItem; t: (key: any) => string }) {
     </motion.article>
   );
 
-  if (!hasDeployed) {
-    return cardInnerContent;
+  if (!isAvailable || !house.deployedUrl) {
+    return (
+      <div
+        role="button"
+        tabIndex={0}
+        aria-disabled="true"
+        aria-label={`${house.code}: ${displayName} - ${t('showcase.not_ready_demos')}`}
+        className="block h-full group font-sans cursor-not-allowed select-none"
+      >
+        {cardInnerContent}
+      </div>
+    );
   }
 
   if (house.deployedUrl.startsWith('/')) {
@@ -651,17 +766,17 @@ function matchesHouseBusinessType(house: HouseItem, filter: string): boolean {
 
 // ─── Page Component ───────────────────────────────────────────────────────────
 export default function OrderDemo() {
-  const { t } = useTranslation();
+  const { t, language } = useTranslation();
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
 
   // Applied filters (control what is currently rendered in demo cards and available categories)
   const [appliedBusinessTypeFilter, setAppliedBusinessTypeFilter] = useState<string>("all");
-  const [appliedSortBy, setAppliedSortBy] = useState<"all" | "sandbox" | "startup">("all");
+  const [appliedSortBy, setAppliedSortBy] = useState<"all" | "ready" | "not_ready">("all");
 
   // Pending filters (selected via dropdowns before pressing OK)
   const [pendingBusinessTypeFilter, setPendingBusinessTypeFilter] = useState<string>("all");
-  const [pendingSortBy, setPendingSortBy] = useState<"all" | "sandbox" | "startup">("all");
+  const [pendingSortBy, setPendingSortBy] = useState<"all" | "ready" | "not_ready">("all");
 
   const [isSortOpen, setIsSortOpen] = useState(false);
   const [isStatusOpen, setIsStatusOpen] = useState(false);
@@ -716,10 +831,10 @@ export default function OrderDemo() {
     }
 
     let pool = projectData;
-    if (appliedSortBy === "sandbox") {
-      pool = projectData.filter(h => h.code === 'SANDBOX');
-    } else if (appliedSortBy === "startup") {
-      pool = projectData.filter(h => h.code !== 'SANDBOX');
+    if (appliedSortBy === "ready") {
+      pool = projectData.filter(h => h.isReady);
+    } else if (appliedSortBy === "not_ready") {
+      pool = projectData.filter(h => !h.isReady);
     }
 
     if (appliedBusinessTypeFilter !== "all") {
@@ -741,7 +856,7 @@ export default function OrderDemo() {
   }, [availableCategories, selectedCategories]);
 
   // Split filtered results into two groups and apply filters/sorting
-  const { sandboxDemos, projectDemos } = useMemo(() => {
+  const { readyDemos, notReadyDemos } = useMemo(() => {
     const allFiltered = projectData.filter(house => {
       const query = searchQuery.trim().toLowerCase();
 
@@ -791,6 +906,8 @@ export default function OrderDemo() {
         house.code.startsWith('TN') ? 'StartUP' : 'SANDBOX',
         house.code.startsWith('TN') ? 'Startup' : 'Sandbox',
         house.code.startsWith('TN') ? t('showcase.startup_badge' as any) : '',
+        house.isReady ? 'พร้อมใช้งาน' : 'ยังไม่พร้อมใช้งาน',
+        house.isReady ? 'ready' : 'not ready',
         house.type,
       ];
 
@@ -913,25 +1030,26 @@ export default function OrderDemo() {
       return matchesSearch && matchesCategory && matchesBusinessType;
     });
 
-    let sandboxes = allFiltered.filter(h => h.code === 'SANDBOX');
-    let projects = allFiltered.filter(h => h.code !== 'SANDBOX');
+    let ready = allFiltered.filter(h => h.isReady);
+    let notReady = allFiltered.filter(h => !h.isReady);
 
-    // Filter by appliedSortBy selection (Sandbox Demo vs StartUP Demo)
-    if (appliedSortBy === "sandbox") {
-      projects = [];
-    } else if (appliedSortBy === "startup") {
-      sandboxes = [];
+    // Filter by appliedSortBy selection (Ready vs Not Ready)
+    if (appliedSortBy === "ready") {
+      notReady = [];
+    } else if (appliedSortBy === "not_ready") {
+      ready = [];
     } else {
-      projects.sort((a, b) => a.id - b.id);
+      ready.sort((a, b) => a.id - b.id);
+      notReady.sort((a, b) => a.id - b.id);
     }
 
     return {
-      sandboxDemos: sandboxes,
-      projectDemos: projects,
+      readyDemos: ready,
+      notReadyDemos: notReady,
     };
   }, [searchQuery, selectedCategories, appliedBusinessTypeFilter, appliedSortBy, t]);
 
-  const totalResults = sandboxDemos.length + projectDemos.length;
+  const totalResults = readyDemos.length + notReadyDemos.length;
   const isAllCategoryActive = selectedCategories.length === 0 || selectedCategories.includes("all");
 
   return (
@@ -992,7 +1110,7 @@ export default function OrderDemo() {
                       {t('showcase.sort_heading')}:
                     </span>
                     <span className="font-extrabold text-foreground truncate">
-                      {pendingSortBy === "sandbox" ? t('showcase.sort_sandbox' as TranslationKey) : pendingSortBy === "startup" ? t('showcase.sort_startup' as TranslationKey) : t('showcase.cat_all')}
+                      {pendingSortBy === "ready" ? t('showcase.sort_ready' as TranslationKey) : pendingSortBy === "not_ready" ? t('showcase.sort_not_ready' as TranslationKey) : t('showcase.cat_all')}
                     </span>
                   </div>
                   <ChevronDown className={`size-3.5 text-muted-foreground transition-transform duration-200 shrink-0 ${isSortOpen ? "rotate-180 text-primary" : ""}`} />
@@ -1010,8 +1128,8 @@ export default function OrderDemo() {
                     >
                       {[
                         { id: "all", label: t('showcase.cat_all') },
-                        { id: "sandbox", label: t('showcase.sort_sandbox' as TranslationKey) },
-                        { id: "startup", label: t('showcase.sort_startup' as TranslationKey) },
+                        { id: "ready", label: t('showcase.sort_ready' as TranslationKey) },
+                        { id: "not_ready", label: t('showcase.sort_not_ready' as TranslationKey) },
                       ].map((opt) => {
                         const isSelected = pendingSortBy === opt.id;
                         return (
@@ -1189,39 +1307,44 @@ export default function OrderDemo() {
           </div>
         ) : (
           <>
-            {/* ── Section 1: Sandbox Demos ───────────────────────────────── */}
-            {sandboxDemos.length > 0 && (
-              <section aria-label="Sandbox Demos" id="sandbox-demos-section">
+            {/* ── Section 1: พร้อมใช้งาน (Ready to Use) ────────────────────── */}
+            {readyDemos.length > 0 && (
+              <section aria-label="Ready to Use Demos" id="ready-demos-section">
                 <div className="flex items-center gap-2.5 mb-5">
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                  </span>
                   <h2 className="text-xs font-black text-primary uppercase tracking-widest font-mono leading-none m-0 p-0 flex items-center">
-                    {t('showcase.sandbox_demos' as any)}
+                    {t('showcase.ready_demos' as any)}
                   </h2>
-                  <span className="card-count-badge" id="badge-sandbox-count">
-                    <span>{sandboxDemos.length}</span>
+                  <span className="card-count-badge" id="badge-ready-count">
+                    <span>{readyDemos.length}</span>
                   </span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {sandboxDemos.map(house => (
-                    <DemoCard key={house.id} house={house} t={t} />
+                  {readyDemos.map(house => (
+                    <DemoCard key={house.id} house={house} t={t} language={language} />
                   ))}
                 </div>
               </section>
             )}
 
-            {/* ── Section 2: TN Startup Demos ────────────────────────── */}
-            {projectDemos.length > 0 && (
-              <section aria-label="TN Startup Demos" id="tn-startup-demos-section">
+            {/* ── Section 2: ยังไม่พร้อมใช้งาน (In Development / Not Ready) ─── */}
+            {notReadyDemos.length > 0 && (
+              <section aria-label="Not Ready Demos" id="not-ready-demos-section">
                 <div className="flex items-center gap-2.5 mb-5">
-                  <h2 className="text-xs font-black text-primary uppercase tracking-widest font-mono leading-none m-0 p-0 flex items-center">
-                    {t('showcase.student_projects')}
+                  <span className="inline-flex rounded-full h-2.5 w-2.5 bg-amber-500" />
+                  <h2 className="text-xs font-black text-muted-foreground uppercase tracking-widest font-mono leading-none m-0 p-0 flex items-center">
+                    {t('showcase.not_ready_demos' as any)}
                   </h2>
-                  <span className="card-count-badge" id="badge-projects-count">
-                    <span>{projectDemos.length}</span>
+                  <span className="card-count-badge" id="badge-not-ready-count">
+                    <span>{notReadyDemos.length}</span>
                   </span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-                  {projectDemos.map(house => (
-                    <DemoCard key={house.id} house={house} t={t} />
+                  {notReadyDemos.map(house => (
+                    <DemoCard key={house.id} house={house} t={t} language={language} />
                   ))}
                 </div>
               </section>
