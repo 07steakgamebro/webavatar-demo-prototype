@@ -132,3 +132,91 @@ export function triggerWebAvatarCall(): boolean {
 
   return success;
 }
+
+/**
+ * Speaks a notification or warning message via WebAvatar SDK.
+ * If the WebAvatar SDK is connected and supports speech, it delegates to it;
+ * otherwise it uses the browser's native SpeechSynthesis (Web Speech API)
+ * with language matching and triggers avatar reaction animations.
+ */
+export function speakWebAvatarMessage(message: string, lang: string = 'th-TH'): void {
+  if (typeof window === 'undefined' || !message) return;
+
+  console.log(`[WebAvatar Speech] Announcing: "${message}" (${lang})`);
+
+  // 1. Trigger Avatar gesture / emotion animation if widget is ready
+  const wa = (window as any).WebAvatar;
+  const cw = (window as any).ChatWidget;
+
+  try {
+    if (wa && typeof wa.setEmotion === 'function') {
+      wa.setEmotion('thinking', 4);
+    }
+    if (wa && typeof wa.loadAnimation === 'function') {
+      wa.loadAnimation('Generic_look_around');
+    } else if (cw && typeof cw.playAnimation === 'function') {
+      cw.playAnimation('Generic_look_around');
+    }
+  } catch (err) {
+    console.debug('[WebAvatar Speech] Animation trigger notice:', err);
+  }
+
+  // 2. Try window.WebAvatar / ChatWidget direct speech / sendUserMessage methods
+  let handledByAvatar = false;
+  if (wa) {
+    if (typeof wa.speak === 'function') {
+      try {
+        wa.speak(message);
+        handledByAvatar = true;
+      } catch (e) {
+        console.warn('[WebAvatar] wa.speak failed:', e);
+      }
+    } else if (typeof wa.say === 'function') {
+      try {
+        wa.say(message);
+        handledByAvatar = true;
+      } catch (e) {
+        console.warn('[WebAvatar] wa.say failed:', e);
+      }
+    }
+  }
+
+  // 3. Dispatch custom event for widget or listeners
+  try {
+    window.dispatchEvent(
+      new CustomEvent('webavatar-speak', {
+        detail: { text: message, lang },
+      })
+    );
+  } catch {
+    // ignore
+  }
+
+  // 4. Browser Web Speech Synthesis fallback (standard browser voice TTS)
+  // Ensures voice plays immediately and clearly for visitors
+  if (!handledByAvatar && typeof window.speechSynthesis !== 'undefined') {
+    try {
+      window.speechSynthesis.cancel(); // Stop any pending utterances
+      const utterance = new SpeechSynthesisUtterance(message);
+      utterance.lang = lang;
+      utterance.rate = 1.0;
+      utterance.pitch = 1.05;
+
+      const voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length > 0) {
+        const langPrefix = lang.split('-')[0].toLowerCase();
+        const matchedVoice =
+          voices.find((v) => v.lang.toLowerCase().replace('_', '-') === lang.toLowerCase()) ||
+          voices.find((v) => v.lang.toLowerCase().startsWith(langPrefix)) ||
+          voices.find((v) => v.lang.includes(langPrefix));
+        if (matchedVoice) {
+          utterance.voice = matchedVoice;
+        }
+      }
+
+      window.speechSynthesis.speak(utterance);
+    } catch (e) {
+      console.warn('[WebAvatar Speech] SpeechSynthesis fallback error:', e);
+    }
+  }
+}

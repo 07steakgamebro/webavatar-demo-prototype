@@ -1,5 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { speakWebAvatarMessage } from '../lib/webavatarService';
 
 declare global {
   interface Window {
@@ -107,7 +108,9 @@ function highlightElement(el: HTMLElement, durationMs = 1200) {
       el.style.boxShadow = prevBoxShadow;
       el.style.transition = prevTransition;
     }, durationMs);
-  } catch {}
+  } catch (err) {
+    console.debug('[WebAvatar Bridge] highlightElement notice:', err);
+  }
 }
 
 async function triggerElementClick(target: string | HTMLElement): Promise<boolean> {
@@ -123,15 +126,49 @@ async function triggerElementClick(target: string | HTMLElement): Promise<boolea
 
     await new Promise((r) => setTimeout(r, 150));
 
+    // Mark element and its card as triggered by WebAvatar
+    (el as any).__fromAvatar = true;
+    const cardEl = el.closest('.playing-card') as any;
+    if (cardEl) {
+      cardEl.__fromAvatar = true;
+    }
+
     const opts = { bubbles: true, cancelable: true, view: window };
-    el.dispatchEvent(new PointerEvent('pointerdown', opts));
-    el.dispatchEvent(new MouseEvent('mousedown', opts));
-    el.dispatchEvent(new PointerEvent('pointerup', opts));
-    el.dispatchEvent(new MouseEvent('mouseup', opts));
-    el.dispatchEvent(new MouseEvent('click', opts));
+    const pDown = new PointerEvent('pointerdown', opts);
+    (pDown as any).fromAvatar = true;
+    el.dispatchEvent(pDown);
+
+    const mDown = new MouseEvent('mousedown', opts);
+    (mDown as any).fromAvatar = true;
+    el.dispatchEvent(mDown);
+
+    const pUp = new PointerEvent('pointerup', opts);
+    (pUp as any).fromAvatar = true;
+    el.dispatchEvent(pUp);
+
+    const mUp = new MouseEvent('mouseup', opts);
+    (mUp as any).fromAvatar = true;
+    el.dispatchEvent(mUp);
+
+    const clickEv = new MouseEvent('click', opts);
+    (clickEv as any).fromAvatar = true;
+    el.dispatchEvent(clickEv);
+
     if (typeof el.click === 'function') {
+      try {
+        (el as any).fromAvatar = true;
+      } catch (err) {
+        console.debug('[WebAvatar Bridge] fromAvatar assignment notice:', err);
+      }
       el.click();
     }
+
+    setTimeout(() => {
+      delete (el as any).__fromAvatar;
+      if (cardEl) {
+        delete cardEl.__fromAvatar;
+      }
+    }, 600);
     return true;
   } catch (err) {
     console.error('[WebAvatar Bridge] Error clicking element:', err);
@@ -185,6 +222,36 @@ export default function SpaNavListener() {
       const customEvent = e as CustomEvent;
       const target = customEvent.detail?.target || customEvent.detail?.url || customEvent.detail?.path;
       if (!target) return;
+
+      const disabledUrls = [
+        'eucerin-mu',
+        'digital-friendly-companion',
+        'botnoi-live-speak',
+        'mediq-demo',
+        'arex-platform',
+        'medspa-booking-buddy',
+        'fitder-ai',
+        'ai-e-commerce-brown',
+        'card-tn03',
+        'card-tn06',
+        'card-tn09',
+        'card-tn11',
+        'card-tn12',
+        'botnoi-brewai-production',
+        'card-tn14',
+        'card-tn15',
+        'card-tn16',
+        'card-tn17',
+      ];
+
+      const targetLower = String(target).toLowerCase();
+      const isTargetDisabled = disabledUrls.some((u) => targetLower.includes(u));
+      if (isTargetDisabled) {
+        console.warn('[WebAvatar Bridge] Intercepted navigation to in-development demo:', target);
+        speakWebAvatarMessage('เดโมนี้ยังไม่สามารถเข้าใช้งานได้ค่ะ ตอนนี้กำลังอยู่ในช่วงการพัฒนา');
+        return;
+      }
+
       console.log('[WebAvatar Bridge] Handling SPA navigation to:', target);
       try {
         const url = new URL(target, window.location.origin);
